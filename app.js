@@ -336,8 +336,8 @@ function bindButtons() {
   $("#nextBtn").addEventListener("click", () => {
     const idx = QUESTION_ORDER.indexOf(current);
     if (idx === QUESTION_ORDER.length - 1) { // 마지막 문항(E-Q2) → 제출
-      persist();
       alert("제출 완료되었습니다.");
+      location.reload(); // 제출 후 전체 초기화 (안내 화면으로 복귀)
       return;
     }
     loadQuestion(QUESTION_ORDER[idx + 1]);
