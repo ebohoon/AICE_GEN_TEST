@@ -42,7 +42,7 @@ const QUESTIONS = {
   "B-Q1": {
     no: "3번", title: "전략 발표용 비전 이미지 제작 프롬프트",
     answerFields: [
-      { key: "q1", label: "Q-1. 이미지 생성을 위한 프롬프트 생성용 프롬프트", required: true, guide: "(프롬프트 제출) AI에게 이미지 생성 프롬프트를 만들어 달라고 요청한 프롬프트", placeholder: "프롬프트 생성용 프롬프트", type: "text" },
+      { key: "q1", label: "Q-1. 이미지 생성 프롬프트를 작성하기 위한 요청문", required: true, guide: "(프롬프트 제출) AI에게 이미지 생성 프롬프트를 만들어 달라고 요청한 프롬프트", placeholder: "이미지 생성 프롬프트 작성 요청문", type: "text" },
       { key: "q2", label: "Q-2. 이미지 생성 프롬프트", required: true, guide: "(Q-1로 생성된 프롬프트 및 이미지 생성에 실제 사용한 프롬프트)", placeholder: "이미지 생성 프롬프트", type: "text" },
       { key: "q3", label: "Q-3. 이미지 첨부", required: true, guide: "생성한 이미지를 첨부하세요", type: "image" },
     ],
@@ -392,9 +392,13 @@ function bindButtons() {
   $("#nextBtn").addEventListener("click", () => {
     const idx = QUESTION_ORDER.indexOf(current);
     if (idx === QUESTION_ORDER.length - 1) { // 마지막 문항(E-Q2) → 제출
-      alert("제출 완료되었습니다.");
-      location.reload(); // 제출 후 전체 초기화 (안내 화면으로 복귀)
-      return;
+      persist(); // 현재 답안까지 메모리에 반영
+      const done = QUESTION_ORDER.filter(isAnswered).length;
+      copyToClipboard(buildAllAnswersText()).then(
+        () => { alert(`제출 완료되었습니다. (${done}/${QUESTION_ORDER.length} 작성)\n\n작성하신 전체 답변이 클립보드에 복사되었습니다.\n필요 시 다른 곳에 붙여넣어 보관하세요.`); location.reload(); },
+        () => { alert(`제출 완료되었습니다. (${done}/${QUESTION_ORDER.length} 작성)\n\n(전체 답변 클립보드 복사에 실패했습니다.)`); location.reload(); }
+      );
+      return; // 제출 후 location.reload()로 전체 초기화 (안내 화면 복귀)
     }
     loadQuestion(QUESTION_ORDER[idx + 1]);
   });
@@ -644,6 +648,47 @@ function showAllAnswers() {
   $("#modalProgress").textContent = `${done} / ${QUESTION_ORDER.length} 작성`;
   body.scrollTop = 0;            // 항상 맨 위에서 열리도록
   $("#answersModal").hidden = false;
+}
+
+/* 전체 답변을 텍스트로 구성 (제출 시 클립보드 복사용) */
+function buildAllAnswersText() {
+  const done = QUESTION_ORDER.filter(isAnswered).length;
+  const lines = ["[AICE GENERATIVE 모의고사 - 전체 답변]", `(${done}/${QUESTION_ORDER.length} 작성)`, ""];
+  QUESTION_ORDER.forEach((qid) => {
+    const q = QUESTIONS[qid] || {};
+    const a = answers[qid] || {};
+    lines.push(`■ ${q.no || qid} ${q.title || ""} ${isAnswered(qid) ? "[작성완료]" : "[미작성]"}`);
+    getAnswerFields(qid).forEach((f) => {
+      const v = a[f.key];
+      if (f.type === "image") {
+        lines.push(`  · ${f.label}: ${v ? "(이미지 첨부됨)" : "(미첨부)"}`);
+      } else {
+        lines.push(`  · ${f.label}: ${(v || "").trim() || "(미작성)"}`);
+      }
+    });
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+/* 클립보드 복사 (Promise 반환, 구형 브라우저 폴백 포함) */
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  return new Promise((resolve, reject) => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      ok ? resolve() : reject(new Error("copy failed"));
+    } catch (e) { reject(e); }
+  });
 }
 
 function closeModal() {
