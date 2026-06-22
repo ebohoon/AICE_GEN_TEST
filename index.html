@@ -102,21 +102,7 @@
 
         <div class="question-file" id="questionFile"></div>
 
-        <div class="answer-block">
-          <div class="answer-label">
-            프롬프트 입력: <span class="required">[필수]</span>
-          </div>
-          <div class="answer-guide">※ 답안 도출을 위해 AI 모델에 요청한 프롬프트를 입력하세요</div>
-          <textarea class="answer-input" id="ansPrompt" placeholder="프롬프트 입력 창"></textarea>
-        </div>
-
-        <div class="answer-block">
-          <div class="answer-label">
-            AI 응답 결과 입력: <span class="required">[필수]</span>
-          </div>
-          <div class="answer-guide">※ AI 응답 결과를 그대로 입력하지 말고 문제에 맞는 답안을 입력하세요</div>
-          <textarea class="answer-input" id="ansResult" placeholder="AI 응답 결과 입력 창"></textarea>
-        </div>
+        <div id="answerFields"></div>
 
         <div class="left-actions">
           <button class="btn btn-prev" id="prevBtn">이전</button>

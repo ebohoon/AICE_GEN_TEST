@@ -207,6 +207,25 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px 14px 14px;
+  margin-bottom: 14px;
+}
+.answer-block:last-child { margin-bottom: 0; }
+.answer-file { display: block; margin-bottom: 4px; font-size: 13px; }
+.answer-image-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.answer-field-img {
+  display: block;
+  max-width: 220px;
+  max-height: 170px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
 }
 .answer-label { font-size: 14px; font-weight: 700; }
 .required { color: var(--red); font-weight: 700; }

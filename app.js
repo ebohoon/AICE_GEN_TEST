@@ -41,6 +41,11 @@ const QUESTIONS = {
   },
   "B-Q1": {
     no: "3번", title: "전략 발표용 비전 이미지 제작 프롬프트",
+    answerFields: [
+      { key: "q1", label: "Q-1. 이미지 생성을 위한 프롬프트 생성용 프롬프트", required: true, guide: "(프롬프트 제출) AI에게 이미지 생성 프롬프트를 만들어 달라고 요청한 프롬프트", placeholder: "프롬프트 생성용 프롬프트", type: "text" },
+      { key: "q2", label: "Q-2. 이미지 생성 프롬프트", required: true, guide: "(Q-1로 생성된 프롬프트 및 이미지 생성에 실제 사용한 프롬프트)", placeholder: "이미지 생성 프롬프트", type: "text" },
+      { key: "q3", label: "Q-3. 이미지 첨부", required: true, guide: "생성한 이미지를 첨부하세요", type: "image" },
+    ],
     body:
 `국내 통신·플랫폼 기업 A사는 향후 3년간의 중장기 전략으로 **"AI 기반 B2B 디지털 전환 파트너"**라는 포지셔닝을 강화하려고 한다. 전략기획팀은 이 전략을 경영진과 주요 이해관계자에게 발표할 예정이며, 발표 자료의 첫 장에 삽입할 비전 이미지가 필요하다.
 
@@ -162,6 +167,15 @@ const IMG_LABEL = { dalle3: "OpenAI (gpt-image-1)" };
 /* 이미지 생성 모델을 사용하는 문항 (그 외는 모두 LLM) */
 const IMAGE_QUESTIONS = new Set(["B-Q1"]);
 
+/* 좌측 답안 입력 필드 정의 (문항별 override: QUESTIONS[qid].answerFields) */
+const DEFAULT_ANSWER_FIELDS = [
+  { key: "prompt", label: "프롬프트 입력", required: true, guide: "※ 답안 도출을 위해 AI 모델에 요청한 프롬프트를 입력하세요", placeholder: "프롬프트 입력 창", type: "text" },
+  { key: "result", label: "AI 응답 결과 입력", required: true, guide: "※ AI 응답 결과를 그대로 입력하지 말고 문제에 맞는 답안을 입력하세요", placeholder: "AI 응답 결과 입력 창", type: "text" },
+];
+function getAnswerFields(qid) {
+  return (QUESTIONS[qid] && QUESTIONS[qid].answerFields) || DEFAULT_ANSWER_FIELDS;
+}
+
 /* ---------- 상태 (localStorage 미사용 — 새로고침하면 전체 초기화) ---------- */
 let current = "A-Q1";
 let initialized = false;          // 첫 로드 때 빈 답안으로 덮어쓰지 않기 위한 플래그
@@ -176,8 +190,7 @@ const questionTitle = $("#questionTitle");
 const questionText = $("#questionText");
 const questionInstruction = $("#questionInstruction");
 const questionFile = $("#questionFile");
-const ansPrompt    = $("#ansPrompt");
-const ansResult    = $("#ansResult");
+const answerFields = $("#answerFields");
 const aiPrompt     = $("#aiPrompt");
 const aiResult     = $("#aiResult");
 const aiImages     = $("#aiImages");
@@ -193,7 +206,6 @@ function init() {
   renderSteps();
   bindTabs();
   bindButtons();
-  bindAutoSave();
   bindModelMode();
   bindIntro();
   loadQuestion(current);
@@ -261,8 +273,7 @@ function loadQuestion(qid) {
     questionFile.style.display = "none";
   }
   const a = answers[qid] || {};
-  ansPrompt.value = a.prompt || "";
-  ansResult.value = a.result || "";
+  renderAnswerFields(qid);            // 좌측 답안 필드(문항별) 렌더 + 값 복원
   // 우측 플레이그라운드도 문항별로 복원
   aiPrompt.value = a.aiPrompt || "";
   aiResult.classList.remove("loading");
@@ -276,6 +287,11 @@ function loadQuestion(qid) {
   if (prevBtn) prevBtn.style.display = (qid === QUESTION_ORDER[0]) ? "none" : "";
   const nextBtn = $("#nextBtn");
   if (nextBtn) nextBtn.textContent = (qid === QUESTION_ORDER[QUESTION_ORDER.length - 1]) ? "제출" : "다음";
+
+  // 문항 이동 시 항상 맨 위부터 보이도록
+  window.scrollTo(0, 0);
+  const qbox = document.querySelector(".question-box");
+  if (qbox) qbox.scrollTop = 0;
 }
 
 function updateActiveStates(qid) {
@@ -292,31 +308,71 @@ function updateActiveStates(qid) {
 
 function isAnswered(qid) {
   const a = answers[qid];
-  return !!(a && (a.prompt?.trim() || a.result?.trim()));
+  if (!a) return false;
+  return getAnswerFields(qid).some((f) => a[f.key] && String(a[f.key]).trim());
 }
 
 /* ============================================================
  *  답안 저장/복원
  * ============================================================ */
 function saveCurrentToMemory() {
-  answers[current] = {
-    prompt: ansPrompt.value,         // 좌측 프롬프트 입력(답안)
-    result: ansResult.value,         // 좌측 AI 응답 결과 입력(답안)
-    aiPrompt: aiPrompt.value,        // 우측 프롬프트 입력
-    aiResult: aiResult.textContent,  // 우측 AI 응답 결과(텍스트)
-  };
+  const a = answers[current] = answers[current] || {};
+  collectAnswerFields();              // 좌측 답안 필드들(문항별)
+  a.aiPrompt = aiPrompt.value;        // 우측 프롬프트 입력
+  a.aiResult = aiResult.textContent;  // 우측 AI 응답 결과(텍스트)
   playgroundImages[current] = aiImages.innerHTML; // 우측 이미지 결과(세션 한정)
 }
 function persist() {
   saveCurrentToMemory(); // 메모리에만 보존 (localStorage 미사용 → 새로고침 시 초기화)
 }
-function bindAutoSave() {
-  [ansPrompt, ansResult].forEach((el) =>
-    el.addEventListener("input", () => {
-      saveCurrentToMemory();
-      updateActiveStates(current);
-    })
-  );
+/* 문항별 좌측 답안 필드 렌더링 + 값 복원 */
+function renderAnswerFields(qid) {
+  const fields = getAnswerFields(qid);
+  const a = answers[qid] || {};
+  answerFields.innerHTML = "";
+  fields.forEach((f) => {
+    const block = document.createElement("div");
+    block.className = "answer-block";
+    const req = f.required ? ' <span class="required">[필수]</span>' : "";
+    const guide = f.guide ? `<div class="answer-guide">${escapeHtml(f.guide)}</div>` : "";
+    if (f.type === "image") {
+      block.innerHTML =
+        `<div class="answer-label">${escapeHtml(f.label)}${req}</div>` + guide +
+        `<input type="file" accept="image/*" class="answer-file" />` +
+        `<div class="answer-image-preview"></div>`;
+      const preview = block.querySelector(".answer-image-preview");
+      if (a[f.key]) preview.innerHTML = `<img src="${a[f.key]}" alt="첨부 이미지" />`;
+      block.querySelector(".answer-file").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          (answers[current] = answers[current] || {})[f.key] = reader.result;
+          preview.innerHTML = `<img src="${reader.result}" alt="첨부 이미지" />`;
+          updateActiveStates(current);
+        };
+        reader.readAsDataURL(file);
+      });
+    } else {
+      block.innerHTML =
+        `<div class="answer-label">${escapeHtml(f.label)}${req}</div>` + guide +
+        `<textarea class="answer-input" data-key="${f.key}" placeholder="${escapeHtml(f.placeholder || "")}"></textarea>`;
+      const ta = block.querySelector("textarea");
+      ta.value = a[f.key] || "";
+      ta.addEventListener("input", () => { collectAnswerFields(); updateActiveStates(current); });
+    }
+    answerFields.appendChild(block);
+  });
+}
+
+/* 현재 문항의 좌측 텍스트 필드 값을 메모리에 수집 */
+function collectAnswerFields() {
+  const a = answers[current] = answers[current] || {};
+  getAnswerFields(current).forEach((f) => {
+    if (f.type === "image") return; // 이미지는 첨부 시점에 저장됨
+    const ta = answerFields.querySelector(`textarea[data-key="${f.key}"]`);
+    if (ta) a[f.key] = ta.value;
+  });
 }
 
 /* ============================================================
@@ -557,8 +613,18 @@ function showAllAnswers() {
     const q = QUESTIONS[qid] || {};
     const a = answers[qid] || {};
     const done = isAnswered(qid);
-    const p = (a.prompt || "").trim();
-    const r = (a.result || "").trim();
+    let fieldsHtml = "";
+    getAnswerFields(qid).forEach((f) => {
+      const v = a[f.key];
+      if (f.type === "image") {
+        fieldsHtml += `<div class="answer-field"><div class="answer-field-label">${escapeHtml(f.label)}</div>` +
+          (v ? `<img class="answer-field-img" src="${v}" alt="첨부 이미지" />` : `<div class="answer-field-value empty">(미첨부)</div>`) + `</div>`;
+      } else {
+        const t = (v || "").trim();
+        fieldsHtml += `<div class="answer-field"><div class="answer-field-label">${escapeHtml(f.label)}</div>` +
+          `<div class="answer-field-value ${t ? "" : "empty"}">${t ? escapeHtml(v) : "(미작성)"}</div></div>`;
+      }
+    });
     const item = document.createElement("div");
     item.className = "answer-item";
     item.innerHTML =
@@ -566,11 +632,7 @@ function showAllAnswers() {
         `<span class="answer-item-no">${escapeHtml(q.no || qid)}</span>` +
         `<span class="answer-item-title">${escapeHtml(q.title || "")}</span>` +
         `<span class="answer-badge ${done ? "done" : "todo"}">${done ? "작성완료" : "미작성"}</span>` +
-      `</div>` +
-      `<div class="answer-field"><div class="answer-field-label">프롬프트 입력</div>` +
-        `<div class="answer-field-value ${p ? "" : "empty"}">${p ? escapeHtml(p) : "(미작성)"}</div></div>` +
-      `<div class="answer-field"><div class="answer-field-label">AI 응답 결과 입력</div>` +
-        `<div class="answer-field-value ${r ? "" : "empty"}">${r ? escapeHtml(r) : "(미작성)"}</div></div>` +
+      `</div>` + fieldsHtml +
       `<button class="answer-goto" type="button">이 문항으로 이동 →</button>`;
     item.querySelector(".answer-goto").addEventListener("click", () => {
       closeModal();
