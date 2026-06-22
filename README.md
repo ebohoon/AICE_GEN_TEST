@@ -44,6 +44,18 @@ node server.js
 ```
 → 브라우저에서 `http://localhost:5500` 접속. (포트 변경: `$env:PORT=3000; node server.js`)
 
+### 3) Vercel 배포
+
+백엔드는 `api/` 폴더의 **서버리스 함수**(`api/llm.js`, `api/image.js`, `api/health.js`)로 동작합니다. (상시 서버인 `server.js`는 **로컬 개발 전용**이며 Vercel에서는 실행되지 않습니다. 핵심 로직은 `api/_shared.js`에 공유.)
+
+1. GitHub 저장소를 Vercel에 연결 → 푸시 시 자동 배포
+2. **환경변수 설정** (Vercel → Project → Settings → Environment Variables):
+   - `OPENAI_API_KEY` — OpenAI 키 (텍스트 gpt-5.2 + 이미지 gpt-image-1 공용)
+   - `GOOGLE_API_KEY` — Google 키 (Gemini)
+3. 환경변수 추가 후 **Redeploy** 해야 반영됨
+
+> `config.json`은 `.gitignore`로 배포에 포함되지 않으므로, Vercel에서는 **반드시 환경변수로 키를 주입**해야 합니다. 함수가 없으면 `/api/*`는 404, 키가 없으면 호출 시 "키가 설정되지 않았습니다" 오류가 납니다.
+
 ## 모델 ID 참고
 
 화면에 표시되는 이름과 실제 API 모델 ID가 다를 수 있어 `config.json`에서 조정합니다.
@@ -52,10 +64,7 @@ node server.js
 |-----------|--------------|---------------------|
 | Open AI (gpt-5.2) | `gpt-5.2` | OpenAI Chat Completions |
 | Google (gemini-2.5) | `gemini-2.5-flash` | Google Generative Language |
-| xAI (grok-4-1-fast) | `grok-4-1-fast` | xAI (OpenAI 호환) |
-| Nano Banana | `gemini-2.5-flash-image` | Google (이미지) |
-| DALL-E 3 | `dall-e-3` | OpenAI Images |
-| Grok (이미지) | `grok-2-image` | xAI Images |
+| OpenAI (gpt-image-1) | `gpt-image-1` | OpenAI Images (이미지) |
 
 ## API 엔드포인트
 

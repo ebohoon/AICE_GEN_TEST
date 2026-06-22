@@ -477,7 +477,13 @@ async function postJSON(url, body) {
   }
   let data = {};
   try { data = await res.json(); } catch (e) {}
-  if (!res.ok) throw new Error(data.error || `요청 실패 (HTTP ${res.status})`);
+  if (!res.ok) {
+    // 404/405 + 우리 API의 에러 형식이 아니면 → 백엔드(node server.js)가 아닌 정적 서버에 접속한 경우
+    if (!data.error && (res.status === 404 || res.status === 405)) {
+      throw new Error("백엔드 API에 연결되지 않았습니다. Live Server 같은 정적 서버가 아니라 'node server.js'로 띄운 주소로 접속했는지 확인하세요.");
+    }
+    throw new Error(data.error || `요청 실패 (HTTP ${res.status})`);
+  }
   return data;
 }
 
