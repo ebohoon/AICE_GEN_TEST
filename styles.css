@@ -210,6 +210,24 @@ html, body {
   margin-bottom: 14px;
 }
 .answer-block:last-child { margin-bottom: 0; }
+
+/* 객관식 보기 */
+.choice-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.choice-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13.5px;
+  line-height: 1.55;
+  transition: background .12s, border-color .12s;
+}
+.choice-option:hover { background: #f5f8fc; }
+.choice-option.selected { border-color: var(--blue); background: var(--blue-light); }
+.choice-option input { margin-top: 3px; accent-color: var(--blue); flex-shrink: 0; }
 .answer-file { display: block; margin-bottom: 4px; font-size: 13px; }
 .answer-image-preview img {
   display: block;

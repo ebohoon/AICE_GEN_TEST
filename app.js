@@ -129,19 +129,28 @@ const QUESTIONS = {
 응시자는 위 업무를 수행할 수 있는 AI 에이전트용 프롬프트를 작성하도록 생성형 AI에 지시하는 프롬프트를 작성해야 한다. 프롬프트에는 에이전트의 역할, 업무 목표, 입력 정보, 단계별 수행 절차, 자료 선별 기준, 데이터 정상 여부 확인 기준, 요약 내용의 적정성 검토 기준, 최종 보고서 초안의 구성 항목이 포함되어야 한다. 결과물은 사람이 검토하기 쉽도록 구조화되어야 하며, 실제 업무 자동화에 바로 활용할 수 있도록 명확하고 지시형 어조로 작성되어야 한다.`,
   },
   "E-Q2": {
-    no: "9번", title: "고객 문의 분류 및 응답 초안 자동화 프롬프트",
+    no: "9번", title: "맞춤형 이메일 자동 발송 업무 흐름 (객관식)",
+    instruction: "보기 ①~⑤ 중 가장 적절한 것을 하나 선택하시오.",
+    // 정답: ② (고객 정보 관리 → 콘텐츠 생성 → 이메일 초안 검토 및 확정 → 이메일 발송 → 결과 기록 및 리포트 저장)
+    answerFields: [
+      { key: "answer", label: "정답 선택", required: true, type: "choice", options: [
+        "① 콘텐츠 생성 → 고객 정보 관리 → 이메일 발송 → 이메일 초안 검토 및 확정 → 결과 기록 및 리포트 저장",
+        "② 고객 정보 관리 → 콘텐츠 생성 → 이메일 초안 검토 및 확정 → 이메일 발송 → 결과 기록 및 리포트 저장",
+        "③ 고객 정보 관리 → 이메일 발송 → 콘텐츠 생성 → 결과 기록 및 리포트 저장 → 이메일 초안 검토 및 확정",
+        "④ 이메일 초안 검토 및 확정 → 고객 정보 관리 → 콘텐츠 생성 → 이메일 발송 → 결과 기록 및 리포트 저장",
+        "⑤ 결과 기록 및 리포트 저장 → 고객 정보 관리 → 콘텐츠 생성 → 이메일 초안 검토 및 확정 → 이메일 발송",
+      ] },
+    ],
     body:
-`한 교육 서비스 기업은 홈페이지 문의게시판, 카카오톡 채널, 이메일을 통해 매일 다양한 고객 문의를 받고 있다. 문의 유형은 수강 신청, 결제 오류, 환불 요청, 수강 기간 연장, 강의 재생 오류, 계정 로그인 문제, 학습 진도 확인, 증빙서류 요청 등으로 다양하다.
+`마케팅팀은 신제품 출시를 앞두고 기존 고객에게 맞춤형 이메일을 자동으로 발송하는 업무를 설계하려고 한다. 기존에는 담당자가 고객 정보를 직접 확인한 뒤, 고객 유형에 따라 이메일 내용을 작성하고, 발송 대상자를 선별한 후 Gmail을 통해 개별적으로 이메일을 발송하였다. 이후 발송 여부와 고객 반응을 별도의 시트에 수기로 기록했기 때문에 업무 시간이 많이 소요되고, 발송 누락이나 기록 오류가 발생하는 문제가 있었다.
 
-현재 운영 담당자는 모든 문의를 직접 읽고 유형을 분류한 뒤, 담당 부서에 전달하거나 직접 응답 초안을 작성하고 있다. 이 과정에서 단순 반복 문의에 많은 시간이 소요되고, 문의 유형 분류 기준이 일정하지 않아 처리 우선순위가 뒤섞이는 문제가 발생하고 있다. 특히 환불, 민원, 기술 오류, 결제 문제처럼 빠른 처리가 필요한 문의가 일반 문의와 섞여 확인이 늦어지는 경우가 있다.
+이에 따라 마케팅팀은 반복적인 이메일 발송 업무를 자동화하고자 한다. 고객 정보는 Google Sheets에 저장되어 있으며, 시트에는 고객명, 이메일 주소, 관심 제품군, 구매 이력, 고객 등급, 최근 문의 내용 등이 포함되어 있다. 이메일 문구는 고객별 특성에 맞게 작성되어야 하므로 ChatGPT를 활용해 개인화된 이메일 초안을 생성하려고 한다.
 
-기업은 AI 에이전트를 활용하여 고객 문의를 자동으로 분류하고, 긴급도를 판단하며, 담당 부서를 추천하고, 1차 응답 초안을 작성하는 업무를 자동화하려고 한다. 단, AI가 최종 답변을 고객에게 직접 발송하는 것이 아니라, 사람이 검토할 수 있는 초안을 작성하는 수준이어야 한다.
+전체 자동화 흐름은 Power Automate가 담당한다. Power Automate는 Google Sheets의 고객 정보를 불러오고, ChatGPT를 호출하여 고객별 맞춤형 이메일 내용을 생성하며, 생성된 이메일 초안을 다시 Google Sheets에 저장하도록 연결한다. 단, 고객에게 발송되는 이메일은 외부로 직접 전달되는 메시지이므로, 담당자가 생성된 초안을 먼저 검토하고 확정하는 과정이 필요하다. 검토가 완료된 이메일만 Gmail을 통해 발송되어야 한다.
 
-자동화 대상 업무는 다음과 같다. 신규 문의 내용 확인, 문의 유형 분류, 긴급도 판단, 담당 부서 추천, 고객에게 보낼 1차 응답 초안 작성, 담당자가 확인해야 할 주의사항 표시이다.
+이메일 발송 후에는 발송 일시, 발송 성공 여부, 발송 대상 고객, 사용된 이메일 제목, 후속 조치 필요 여부 등을 Google Sheets에 자동으로 기록해야 한다. 또한 향후 캠페인 성과 분석을 위해 발송 결과를 리포트 형태로 저장해야 한다.
 
-응답 초안은 고객에게 친절하고 정중해야 하며, 회사 정책이 확인되지 않은 상태에서 환불 가능, 무료 연장 가능, 즉시 처리 가능 등 확정적인 표현을 사용해서는 안 된다. 기술 오류나 결제 오류처럼 확인이 필요한 사안은 담당 부서 확인 후 안내하겠다는 방향으로 작성해야 한다. 고객의 감정이 격앙되어 있거나 민원성이 강한 경우에는 우선 사과와 공감을 표현하되, 책임을 과도하게 인정하는 문구는 피해야 한다.
-
-응시자는 위 업무를 수행할 수 있는 AI 에이전트용 프롬프트를 작성해야 한다. 프롬프트에는 에이전트의 역할, 처리 대상 문의, 분류 기준, 긴급도 판단 기준, 담당 부서 추천 기준, 응답 초안 작성 기준, 금지 표현, 최종 출력 형식이 포함되어야 한다. 결과물은 운영 담당자가 바로 검토할 수 있도록 표 형태로 구조화되어야 하며, 실무에서 활용 가능한 명확하고 신중한 어조로 작성되어야 한다.`,
+다음 중 위 상황에서 맞춤형 이메일 자동 발송 업무 흐름의 순서로 가장 적절한 것은?`,
   },
 };
 
@@ -258,7 +267,9 @@ function loadQuestion(qid) {
   if (q) {
     questionTitle.textContent = `${q.no}. ${q.title}`;
     questionText.innerHTML = renderQuestionBody(q.body);
-    questionInstruction.textContent = "※ " + COMMON_INSTRUCTION;
+    const instr = (q.instruction !== undefined) ? q.instruction : COMMON_INSTRUCTION;
+    questionInstruction.textContent = instr ? ("※ " + instr) : "";
+    questionInstruction.style.display = instr ? "" : "none";
   } else {
     questionTitle.textContent = "";
     questionText.textContent = "(문항 준비 중)";
@@ -353,6 +364,31 @@ function renderAnswerFields(qid) {
         };
         reader.readAsDataURL(file);
       });
+    } else if (f.type === "choice") {
+      block.innerHTML = `<div class="answer-label">${escapeHtml(f.label)}${req}</div>` + guide;
+      const list = document.createElement("div");
+      list.className = "choice-list";
+      (f.options || []).forEach((opt) => {
+        const lab = document.createElement("label");
+        lab.className = "choice-option";
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "choice-" + qid + "-" + f.key;
+        radio.value = opt;
+        if (a[f.key] === opt) { radio.checked = true; lab.classList.add("selected"); }
+        radio.addEventListener("change", () => {
+          (answers[current] = answers[current] || {})[f.key] = opt;
+          list.querySelectorAll(".choice-option").forEach((el) => el.classList.remove("selected"));
+          lab.classList.add("selected");
+          updateActiveStates(current);
+        });
+        const span = document.createElement("span");
+        span.textContent = opt;
+        lab.appendChild(radio);
+        lab.appendChild(span);
+        list.appendChild(lab);
+      });
+      block.appendChild(list);
     } else {
       block.innerHTML =
         `<div class="answer-label">${escapeHtml(f.label)}${req}</div>` + guide +
@@ -369,7 +405,7 @@ function renderAnswerFields(qid) {
 function collectAnswerFields() {
   const a = answers[current] = answers[current] || {};
   getAnswerFields(current).forEach((f) => {
-    if (f.type === "image") return; // 이미지는 첨부 시점에 저장됨
+    if (f.type !== "text") return; // 이미지·객관식은 선택/첨부 시점에 저장됨
     const ta = answerFields.querySelector(`textarea[data-key="${f.key}"]`);
     if (ta) a[f.key] = ta.value;
   });
