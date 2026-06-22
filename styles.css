@@ -412,12 +412,24 @@ html, body {
 .intro-header {
   padding: 26px 36px 20px;
   border-bottom: 1px solid #eef1f6;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
+/* 안내 페이지에서는 'GENERATIVE 모의고사'를 'AICE'와 같은 크기로 */
+.intro-header .brand-sub { font-size: 22px; font-weight: 800; }
 .intro-header h1 {
   margin-top: 10px;
   font-size: 26px;
   font-weight: 800;
   color: var(--text);
+}
+.intro-logo {
+  max-height: 60px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .intro-body { padding: 24px 36px 8px; }
 .intro-section { margin-bottom: 26px; }
