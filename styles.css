@@ -40,8 +40,8 @@ html, body {
 }
 
 .topbar-left { display: flex; align-items: baseline; gap: 6px; }
-.brand     { font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: 1px; }
-.brand-sub { font-size: 13px; font-weight: 700; color: var(--text-soft); letter-spacing: 1px; }
+.brand     { font-size: 22px; font-weight: 800; color: #56D9F9; letter-spacing: 1px; }
+.brand-sub { font-size: 22px; font-weight: 800; color: #56D9F9; letter-spacing: 1px; }
 
 .topbar-right {
   display: flex;
@@ -417,8 +417,6 @@ html, body {
   justify-content: space-between;
   gap: 16px;
 }
-/* 안내 페이지에서는 'GENERATIVE 모의고사'를 'AICE'와 같은 크기로 */
-.intro-header .brand-sub { font-size: 22px; font-weight: 800; }
 .intro-header h1 {
   margin-top: 10px;
   font-size: 26px;
@@ -426,7 +424,7 @@ html, body {
   color: var(--text);
 }
 .intro-logo {
-  max-height: 60px;
+  max-height: 110px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
