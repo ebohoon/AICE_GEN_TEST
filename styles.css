@@ -42,6 +42,9 @@ html, body {
 .topbar-left { display: flex; align-items: baseline; gap: 6px; }
 .brand     { font-size: 22px; font-weight: 800; color: #56D9F9; letter-spacing: 1px; }
 .brand-sub { font-size: 22px; font-weight: 800; color: #56D9F9; letter-spacing: 1px; }
+/* 시험창(상단 바) 브랜드는 진한 파랑(#1c6ee0), 안내 페이지는 시안 유지 */
+.topbar-left .brand,
+.topbar-left .brand-sub { color: var(--blue); }
 
 .topbar-right {
   display: flex;
