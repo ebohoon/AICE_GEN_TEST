@@ -438,6 +438,17 @@ html, body {
   flex-shrink: 0;
 }
 .intro-body { padding: 24px 36px 8px; }
+.intro-disclaimer {
+  margin-bottom: 22px;
+  padding: 12px 15px;
+  background: #eef7ff;
+  border: 1px solid #cfe6fb;
+  border-left: 4px solid var(--blue);
+  border-radius: 6px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #2c4a66;
+}
 .intro-section { margin-bottom: 26px; }
 .intro-section h2 {
   font-size: 17px;

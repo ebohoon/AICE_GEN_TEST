@@ -271,9 +271,11 @@ function loadQuestion(qid) {
   updateActiveStates(qid);
   applyQuestionMode(); // 문항 유형에 맞춰 모델 영역/버튼 전환
 
-  // 첫 문항(A-Q1)에서는 '이전' 버튼 숨김
+  // 첫 문항(A-Q1)에선 '이전' 숨김, 마지막 문항(E-Q2)에선 '다음' → '제출'
   const prevBtn = $("#prevBtn");
   if (prevBtn) prevBtn.style.display = (qid === QUESTION_ORDER[0]) ? "none" : "";
+  const nextBtn = $("#nextBtn");
+  if (nextBtn) nextBtn.textContent = (qid === QUESTION_ORDER[QUESTION_ORDER.length - 1]) ? "제출" : "다음";
 }
 
 function updateActiveStates(qid) {
@@ -333,7 +335,12 @@ function bindButtons() {
   });
   $("#nextBtn").addEventListener("click", () => {
     const idx = QUESTION_ORDER.indexOf(current);
-    loadQuestion(QUESTION_ORDER[(idx + 1) % QUESTION_ORDER.length]);
+    if (idx === QUESTION_ORDER.length - 1) { // 마지막 문항(E-Q2) → 제출
+      persist();
+      alert("제출 완료되었습니다.");
+      return;
+    }
+    loadQuestion(QUESTION_ORDER[idx + 1]);
   });
   $("#copyPromptBtn").addEventListener("click", () => copyText(aiPrompt.value, "프롬프트를 복사했습니다."));
   $("#llmLogBtn").addEventListener("click", showLog);
