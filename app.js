@@ -392,11 +392,12 @@ function bindButtons() {
   $("#nextBtn").addEventListener("click", () => {
     const idx = QUESTION_ORDER.indexOf(current);
     if (idx === QUESTION_ORDER.length - 1) { // 마지막 문항(E-Q2) → 제출
+      if (!confirm("제출하시겠습니까?")) return; // 취소 시 그대로 유지
       persist(); // 현재 답안까지 메모리에 반영
       const done = QUESTION_ORDER.filter(isAnswered).length;
       copyToClipboard(buildAllAnswersText()).then(
-        () => { alert(`제출 완료되었습니다. (${done}/${QUESTION_ORDER.length} 작성)\n\n작성하신 전체 답변이 클립보드에 복사되었습니다.\n필요 시 다른 곳에 붙여넣어 보관하세요.`); location.reload(); },
-        () => { alert(`제출 완료되었습니다. (${done}/${QUESTION_ORDER.length} 작성)\n\n(전체 답변 클립보드 복사에 실패했습니다.)`); location.reload(); }
+        () => { alert(`제출이 완료되어 전체 답변이 클립보드에 복사되었습니다. (${done}/${QUESTION_ORDER.length} 작성)\n\n복사한 답변을 예시답안과 비교하여 직접 채점해 보세요!`); location.reload(); },
+        () => { alert(`제출이 완료되었습니다. (${done}/${QUESTION_ORDER.length} 작성)\n\n작성한 답변을 예시답안과 비교하여 직접 채점해 보세요!\n(전체 답변 자동 복사에는 실패했습니다.)`); location.reload(); }
       );
       return; // 제출 후 location.reload()로 전체 초기화 (안내 화면 복귀)
     }
