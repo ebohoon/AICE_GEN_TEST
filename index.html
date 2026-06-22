@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AICE GENERATIVE 모의고사</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===================== 시험 안내 화면 ===================== -->
+  <div class="intro-screen" id="introScreen">
+    <div class="intro-card">
+      <div class="intro-header">
+        <div><span class="brand">AICE</span> <span class="brand-sub">GENERATIVE</span></div>
+        <h1>시험 안내</h1>
+      </div>
+
+      <div class="intro-body">
+        <!-- 유의사항 -->
+        <section class="intro-section">
+          <h2>시험 유의사항</h2>
+          <ol class="notice-list">
+            <li><b>금지 행위</b> &ndash; 시험문제 촬영, 복사, 녹음, 저장 및 타인에게 배포, 공유 금지</li>
+            <li><b>법적 책임</b> &ndash; 위반시 관련 법률에 의거하여 민&middot;형사상 책임을 질 수 있음</li>
+            <li><b>규정</b> &ndash; 내부 규정에 따라 0점 처리 또는 기타 강력한 징계 처분을 받을 수 있음</li>
+            <li><b>새로고침 주의</b> &ndash; 시험 중 페이지를 <b>새로고침하거나 닫으면 작성한 모든 답안·입력·기록이 초기화</b>되니 주의하세요.</li>
+          </ol>
+          <p class="notice-warning">모든 응시자는 공정한 경쟁과 보안 유지에 적극 협조해 주시기 바랍니다.</p>
+        </section>
+
+        <!-- 안내사항 FAQ -->
+        <section class="intro-section">
+          <h2>안내사항 (FAQ)</h2>
+          <div class="faq">
+            <p class="faq-q">1. 구성요소 5가지를 모두 적어야 하나요?</p>
+            <p class="faq-a">☞ 교육에서 배운대로, 마크다운을 활용해 5가지를 모두 작성해주세요.</p>
+
+            <p class="faq-q">2. 복사/붙여넣기는 어디까지 허용되나요?</p>
+            <p class="faq-a">☞ 문제 전체를 복붙하는 것은 불가능하지만,<br>구성요소에 해당되는 일부분을 복붙하여 활용하는 것은 가능합니다.</p>
+
+            <p class="faq-q">3. 파일 첨부를 어떻게 해야 하나요?</p>
+            <p class="faq-a">☞ 플랫폼에서 파일 첨부가 안됩니다.<br>파일을 열어서 내용을 프롬프트에 복사/붙여넣기 해주세요.</p>
+
+            <p class="faq-q">4. 저장을 못했는데 어떡하죠?</p>
+            <p class="faq-a">☞ 시험 중에는 작성한 답안과 「LLM 로그보기」의 호출 내역이 그대로 유지됩니다.<br>단, 페이지를 <b>새로고침하면 모든 내용이 초기화</b>되므로 시험 중에는 새로고침을 하지 마세요.</p>
+          </div>
+        </section>
+      </div>
+
+      <div class="intro-footer">
+        <label class="intro-agree">
+          <input type="checkbox" id="agreeChk" /> 위 유의사항 및 안내사항을 모두 확인하였습니다.
+        </label>
+        <button class="btn intro-start" id="startBtn" disabled>시험 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+
+    <!-- ===================== 상단 상태 바 ===================== -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="brand">AICE</span>
+        <span class="brand-sub">GENERATIVE</span>
+      </div>
+      <div class="topbar-right">
+        <div class="time-left">
+          남은 시간: <strong id="timeLeft">59분 59초</strong>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===================== 카테고리 탭 ===================== -->
+    <nav class="tab-nav" id="tabNav">
+      <button class="tab active" data-cat="A">A. 프롬프트 엔지니어링</button>
+      <button class="tab" data-cat="B">B. 생성형 AI기반 콘텐츠 제작</button>
+      <button class="tab" data-cat="C">C. 정보 검색 및 수집</button>
+      <button class="tab" data-cat="D">D. 데이터 분석 및 시각화</button>
+      <button class="tab" data-cat="E">E. 업무 자동화</button>
+    </nav>
+
+    <!-- ===================== 문항 스텝 ===================== -->
+    <div class="step-nav" id="stepNav"><!-- JS로 렌더링 --></div>
+
+    <!-- ===================== 본문 (좌/우 패널) ===================== -->
+    <main class="exam-body">
+
+      <!-- --------- 좌측: 문제 + 답안 --------- -->
+      <section class="left-panel">
+        <div class="question-box">
+          <div class="question-title" id="questionTitle"></div>
+          <div class="question-text" id="questionText"></div>
+          <div class="question-instruction" id="questionInstruction"></div>
+        </div>
+
+        <div class="answer-block">
+          <div class="answer-label">
+            프롬프트 입력: <span class="required">[필수]</span>
+          </div>
+          <div class="answer-guide">※ 답안 도출을 위해 AI 모델에 요청한 프롬프트를 입력하세요</div>
+          <textarea class="answer-input" id="ansPrompt" placeholder="프롬프트 입력 창"></textarea>
+        </div>
+
+        <div class="answer-block">
+          <div class="answer-label">
+            AI 응답 결과 입력: <span class="required">[필수]</span>
+          </div>
+          <div class="answer-guide">※ AI 응답 결과를 그대로 입력하지 말고 문제에 맞는 답안을 입력하세요</div>
+          <textarea class="answer-input" id="ansResult" placeholder="AI 응답 결과 입력 창"></textarea>
+        </div>
+
+        <div class="left-actions">
+          <button class="btn btn-prev" id="prevBtn">이전</button>
+          <button class="btn btn-save" id="saveBtn">답변 저장</button>
+          <button class="btn btn-viewall" id="viewAllBtn">전체 답변 보기</button>
+          <button class="btn btn-next" id="nextBtn">다음</button>
+        </div>
+      </section>
+
+      <!-- --------- 우측: AI 플레이그라운드 --------- -->
+      <section class="right-panel">
+
+        <div class="model-row">
+          <fieldset class="model-box" id="llmBox">
+            <legend>LLM 모델 선택</legend>
+            <label class="radio"><input type="radio" name="llm" value="openai" checked /> Open AI (gpt-5.2)</label>
+            <label class="radio"><input type="radio" name="llm" value="google" /> Google (gemini-2.5)</label>
+          </fieldset>
+
+          <fieldset class="model-box" id="imgBox">
+            <legend>이미지 생성 모델 선택</legend>
+            <label class="radio"><input type="radio" name="img" value="nano" /> Nano Banana</label>
+            <label class="radio"><input type="radio" name="img" value="dalle3" /> DALL-E 3</label>
+          </fieldset>
+        </div>
+        <div class="mode-hint" id="modeHint"></div>
+
+        <div class="prompt-box">
+          <div class="prompt-head">
+            <span class="prompt-title">프롬프트 입력</span>
+            <span class="token-count">LLM 토큰 합계 : <strong id="tokenCount">0</strong></span>
+          </div>
+          <textarea class="prompt-input" id="aiPrompt" placeholder="AI에게 물어볼 내용을 입력하세요"></textarea>
+          <div class="prompt-actions">
+            <div class="prompt-actions-left">
+              <button class="btn btn-copy" id="copyPromptBtn">프롬프트 복사</button>
+              <button class="btn btn-log" id="llmLogBtn">LLM 로그보기</button>
+            </div>
+            <button class="btn btn-submit" id="submitBtn">▶ 입력</button>
+          </div>
+        </div>
+
+        <div class="result-box">
+          <div class="result-head">AI 응답 결과</div>
+          <div class="result-output" id="aiResult"></div>
+          <div class="result-images" id="aiImages"></div>
+          <div class="result-actions">
+            <button class="btn btn-copy-ans" id="copyAnsBtn">답변 복사</button>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- ===================== 전체 답변 보기 모달 ===================== -->
+  <div class="modal-overlay" id="answersModal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>전체 답변 보기</h2>
+        <span class="modal-progress" id="modalProgress"></span>
+        <button class="modal-close" id="modalCloseBtn" aria-label="닫기">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-save" id="modalCloseBtn2">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LLM 호출 로그 모달 ===================== -->
+  <div class="modal-overlay" id="logModal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>LLM 호출 로그</h2>
+        <span class="modal-progress" id="logProgress"></span>
+        <button class="modal-close" id="logCloseBtn" aria-label="닫기">&times;</button>
+      </div>
+      <div class="modal-body" id="logBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-save" id="logCloseBtn2">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

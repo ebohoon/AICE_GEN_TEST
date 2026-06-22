@@ -1,0 +1,12 @@
+# API 키가 들어있는 실제 설정 파일은 절대 커밋하지 않음
+config.json
+
+# Claude Code 로컬 전용 설정
+.claude/settings.local.json
+
+# 의존성/빌드 (현재는 사용 안 함)
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

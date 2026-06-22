@@ -1,0 +1,76 @@
+# AICE GENERATIVE 모의고사 툴
+
+생성형 AI 활용 역량(프롬프트 엔지니어링 · 콘텐츠 제작 · 정보 검색 · 데이터 분석/시각화 · 업무 자동화)을 평가하는 AICE GENERATIVE 자격증 모의 시험 환경입니다.
+
+## 구성
+
+| 파일 | 설명 |
+|------|------|
+| `index.html` / `styles.css` / `app.js` | 프론트엔드 (시험 화면) |
+| `server.js` | 백엔드 (정적 파일 제공 + LLM/이미지 API 프록시, **의존성 없음**) |
+| `config.json` | API 키·모델 설정 (**git 제외**, 직접 채워야 함) |
+| `config.example.json` | 설정 템플릿 |
+
+## 실행 방법
+
+### 1) API 키 설정
+`config.json`을 열어 사용할 모델의 `apiKey`를 입력합니다.
+
+```json
+{
+  "llm": {
+    "openai": { "apiKey": "sk-...", "model": "gpt-5.2", "baseUrl": "https://api.openai.com/v1" },
+    "google": { "apiKey": "AIza...", "model": "gemini-2.5-flash" },
+    "xai":    { "apiKey": "xai-...", "model": "grok-4-1-fast" }
+  }
+}
+```
+
+또는 키를 비워두고 **환경변수**로 주입할 수 있습니다.
+
+```powershell
+# PowerShell
+$env:OPENAI_API_KEY   = "sk-..."
+$env:GOOGLE_API_KEY   = "AIza..."   # Gemini / Nano Banana 공용
+$env:XAI_API_KEY      = "xai-..."   # Grok 텍스트/이미지 공용
+```
+
+> 이미지 모델의 `apiKey`를 비워두면 같은 벤더의 LLM 키를 자동 재사용합니다
+> (DALL-E 3 → OpenAI 키, Grok 이미지 → xAI 키, Nano Banana → Google 키).
+
+### 2) 서버 실행
+```powershell
+node server.js
+```
+→ 브라우저에서 `http://localhost:5500` 접속. (포트 변경: `$env:PORT=3000; node server.js`)
+
+## 모델 ID 참고
+
+화면에 표시되는 이름과 실제 API 모델 ID가 다를 수 있어 `config.json`에서 조정합니다.
+
+| 화면 표시 | 기본 모델 ID | 제공자 / 엔드포인트 |
+|-----------|--------------|---------------------|
+| Open AI (gpt-5.2) | `gpt-5.2` | OpenAI Chat Completions |
+| Google (gemini-2.5) | `gemini-2.5-flash` | Google Generative Language |
+| xAI (grok-4-1-fast) | `grok-4-1-fast` | xAI (OpenAI 호환) |
+| Nano Banana | `gemini-2.5-flash-image` | Google (이미지) |
+| DALL-E 3 | `dall-e-3` | OpenAI Images |
+| Grok (이미지) | `grok-2-image` | xAI Images |
+
+## API 엔드포인트
+
+| 메서드 | 경로 | 요청 본문 | 응답 |
+|--------|------|-----------|------|
+| POST | `/api/llm` | `{ provider, prompt }` | `{ text, usage:{prompt,completion,total} }` |
+| POST | `/api/image` | `{ provider, prompt }` | `{ images:[{url}\|{b64,mime}] }` |
+| GET | `/api/health` | – | 키 설정 여부 점검 |
+
+## 동작 방식
+
+- 우측 **LLM 모델**만 선택 → `▶ 입력` 시 텍스트 생성, 실제 토큰 사용량이 `LLM 토큰 합계`에 누적됩니다.
+- 우측 **이미지 생성 모델**을 선택 → 버튼이 `▶ 이미지 생성`으로 바뀌고, 결과 영역에 이미지가 표시됩니다. (선택된 이미지 라디오를 다시 클릭하면 텍스트 모드로 복귀)
+
+## 보안
+
+- `config.json`은 `.gitignore`에 포함되며, 서버가 해당 파일을 정적 경로로 절대 노출하지 않습니다.
+- API 키는 백엔드에서만 사용되고 브라우저로 전달되지 않습니다.
