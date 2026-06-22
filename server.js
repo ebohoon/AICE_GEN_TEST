@@ -4,7 +4,7 @@
  *  역할:
  *   1) 정적 파일(index.html 등) 제공
  *   2) /api/llm   : OpenAI / Google 텍스트 생성 + 실제 토큰 사용량
- *   3) /api/image : Nano Banana / DALL-E 3 이미지 생성
+ *   3) /api/image : OpenAI(gpt-image) 이미지 생성
  *
  *  API 키는 config.json 또는 환경변수로 주입 (브라우저에 노출되지 않음)
  *  실행:  node server.js   (기본 포트 5500, PORT 환경변수로 변경 가능)
@@ -29,6 +29,8 @@ const MIME = {
   ".jpeg": "image/jpeg",
   ".gif":  "image/gif",
   ".ico":  "image/x-icon",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".csv":  "text/csv; charset=utf-8",
 };
 
 /* ============================================================
@@ -53,7 +55,6 @@ function imageKey(provider, c, cfg) {
   if (c && c.apiKey) return c.apiKey;
   // 이미지 키 미설정 시 동일 벤더의 LLM 키 재사용
   if (provider === "dalle3") return (cfg.llm.openai && cfg.llm.openai.apiKey) || process.env.OPENAI_API_KEY || "";
-  if (provider === "nano")   return (cfg.llm.google && cfg.llm.google.apiKey) || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "";
   return "";
 }
 
@@ -151,29 +152,9 @@ async function callImage(provider, prompt, cfg) {
   const key = imageKey(provider, c, cfg);
   if (!key) throw new Error(`${provider} 이미지 API 키가 설정되지 않았습니다. config.json 또는 환경변수를 확인하세요.`);
 
-  /* --- Nano Banana (Google Gemini Image) --- */
-  if (provider === "nano") {
-    const base = c.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
-    const model = c.model || "gemini-2.5-flash-image";
-    const url = `${base}/models/${model}:generateContent`;
-    const { ok, status, json, text } = await fetchJSON(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    });
-    if (!ok) throw apiError("Google 이미지", status, json, text);
-    const parts = (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) || [];
-    const images = parts
-      .map((p) => p.inlineData || p.inline_data)
-      .filter(Boolean)
-      .map((d) => ({ b64: d.data, mime: d.mimeType || d.mime_type || "image/png" }));
-    if (!images.length) throw new Error("이미지 데이터를 받지 못했습니다. (모델이 텍스트만 반환했을 수 있음)");
-    return { provider, model, images };
-  }
-
-  /* --- DALL-E 3 (OpenAI 호환 images/generations) --- */
+  /* --- OpenAI 이미지 (gpt-image, /images/generations) --- */
   const defaults = {
-    dalle3: { base: "https://api.openai.com/v1", model: "dall-e-3" },
+    dalle3: { base: "https://api.openai.com/v1", model: "gpt-image-1" },
   };
   const d = defaults[provider];
   if (!d) throw new Error(`알 수 없는 이미지 모델: ${provider}`);
@@ -260,7 +241,7 @@ const server = http.createServer(async (req, res) => {
     const status = {};
     if (cfg) {
       ["openai", "google"].forEach((p) => { status[p] = !!llmKey(p, cfg.llm && cfg.llm[p]); });
-      ["nano", "dalle3"].forEach((p) => { status["img_" + p] = !!imageKey(p, cfg.image && cfg.image[p], cfg); });
+      ["dalle3"].forEach((p) => { status["img_" + p] = !!imageKey(p, cfg.image && cfg.image[p], cfg); });
     }
     return sendJSON(res, 200, { ok: !!cfg, keys: status });
   }

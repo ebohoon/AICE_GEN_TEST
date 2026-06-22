@@ -5,7 +5,6 @@
     "google": { "apiKey": "AIza...", "model": "gemini-2.5-flash", "baseUrl": "https://generativelanguage.googleapis.com/v1beta" }
   },
   "image": {
-    "nano":   { "apiKey": "", "model": "gemini-2.5-flash-image", "baseUrl": "https://generativelanguage.googleapis.com/v1beta" },
-    "dalle3": { "apiKey": "", "model": "dall-e-3", "baseUrl": "https://api.openai.com/v1", "size": "1024x1024" }
+    "dalle3": { "apiKey": "", "model": "gpt-image-1", "baseUrl": "https://api.openai.com/v1", "size": "1024x1024" }
   }
 }

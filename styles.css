@@ -183,6 +183,22 @@ html, body {
   color: #b45309;
 }
 
+.question-file { margin-top: -4px; }
+.dl-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #e6f4ea;
+  border: 1px solid #b6dcc0;
+  color: var(--green-dark);
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 10px 15px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.dl-file:hover { background: #d8eede; }
+
 .answer-block {
   background: #fff;
   border: 1px solid var(--border);

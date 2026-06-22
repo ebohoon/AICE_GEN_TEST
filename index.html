@@ -63,7 +63,7 @@
     <header class="topbar">
       <div class="topbar-left">
         <span class="brand">AICE</span>
-        <span class="brand-sub">GENERATIVE</span>
+        <span class="brand-sub">GENERATIVE 모의고사</span>
       </div>
       <div class="topbar-right">
         <div class="time-left">
@@ -94,6 +94,8 @@
           <div class="question-text" id="questionText"></div>
           <div class="question-instruction" id="questionInstruction"></div>
         </div>
+
+        <div class="question-file" id="questionFile"></div>
 
         <div class="answer-block">
           <div class="answer-label">
@@ -131,8 +133,7 @@
 
           <fieldset class="model-box" id="imgBox">
             <legend>이미지 생성 모델 선택</legend>
-            <label class="radio"><input type="radio" name="img" value="nano" /> Nano Banana</label>
-            <label class="radio"><input type="radio" name="img" value="dalle3" /> DALL-E 3</label>
+            <label class="radio"><input type="radio" name="img" value="dalle3" /> OpenAI (gpt-image-1)</label>
           </fieldset>
         </div>
         <div class="mode-hint" id="modeHint"></div>

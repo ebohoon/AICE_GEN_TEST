@@ -80,6 +80,7 @@ const QUESTIONS = {
   },
   "D-Q1": {
     no: "6번", title: "연간매출액 영향 요인 상관분석 프롬프트",
+    file: { name: "corr_data.xlsx", url: "data/corr_data.xlsx" },
     body:
 `한 교육 사업 그룹은 사업부별 연간 매출액에 영향을 미치는 주요 요인을 파악하여 향후 투자 및 운영 전략 수립의 우선순위를 정하고자 한다. 이를 위해 데이터분석팀은 각 사업부의 연간매출액과 운영·성과 관련 지표를 수집하였다.
 
@@ -95,6 +96,7 @@ const QUESTIONS = {
   },
   "D-Q2": {
     no: "7번", title: "수강생수 데이터 전처리 및 평균 산출 프롬프트",
+    file: { name: "preprocess_data.xlsx", url: "data/preprocess_data.xlsx" },
     body:
 `KEdulink는 대학, 학원, 온라인교육, 출판 등 다양한 교육 사업을 운영하는 종합 교육그룹이다. 2026년 중장기 전략 수립을 위해 전사 데이터 분석 프로젝트를 진행하고 있으며, 전략기획본부는 각 사업부의 매출액, 비용, 수강생수 데이터를 수집하였다.
 
@@ -155,7 +157,7 @@ function renderQuestionBody(text) {
 const QUESTION_ORDER = CATEGORIES.flatMap((c) => c.questions);
 
 /* 이미지 모델 표시 이름 */
-const IMG_LABEL = { nano: "Nano Banana", dalle3: "DALL-E 3" };
+const IMG_LABEL = { dalle3: "OpenAI (gpt-image-1)" };
 
 /* 이미지 생성 모델을 사용하는 문항 (그 외는 모두 LLM) */
 const IMAGE_QUESTIONS = new Set(["B-Q1"]);
@@ -173,6 +175,7 @@ const tabNav       = $("#tabNav");
 const questionTitle = $("#questionTitle");
 const questionText = $("#questionText");
 const questionInstruction = $("#questionInstruction");
+const questionFile = $("#questionFile");
 const ansPrompt    = $("#ansPrompt");
 const ansResult    = $("#ansResult");
 const aiPrompt     = $("#aiPrompt");
@@ -248,6 +251,14 @@ function loadQuestion(qid) {
     questionTitle.textContent = "";
     questionText.textContent = "(문항 준비 중)";
     questionInstruction.textContent = "";
+  }
+  // 첨부파일 다운로드 (해당 문항만 표시)
+  if (q && q.file) {
+    questionFile.innerHTML = `<a class="dl-file" href="${q.file.url}" download>⬇ 데이터 파일 다운로드 (${escapeHtml(q.file.name)})</a>`;
+    questionFile.style.display = "";
+  } else {
+    questionFile.innerHTML = "";
+    questionFile.style.display = "none";
   }
   const a = answers[qid] || {};
   ansPrompt.value = a.prompt || "";
