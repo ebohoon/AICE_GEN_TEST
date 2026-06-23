@@ -5,6 +5,7 @@
  * ============================================================ */
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const TIMEOUT_MS = 120000; // 외부 API 호출 타임아웃
 
@@ -35,6 +36,7 @@ function loadConfig() {
           }
         }
       }
+      if (file.auth) cfg.auth = file.auth; // 로컬 비밀번호 설정(선택)
     }
   } catch (e) { /* 무시하고 기본값+환경변수 사용 */ }
   return cfg;
@@ -150,11 +152,62 @@ async function callImage(provider, prompt, cfg) {
   return { provider, model, images };
 }
 
-/* ---------- 헬스(키 설정 여부) ---------- */
+/* ============================================================
+ *  인증 (공용 비밀번호 1개 — 서버 측 강제)
+ *  - 비밀번호: config.json auth.password(로컬) 또는 환경변수 ACCESS_PASSWORD
+ *  - 비밀번호 미설정 시 인증 비활성(공개 접근) → 점진적 적용 가능
+ *  - 토큰: 비밀번호를 키로 한 HMAC 서명 (별도 시크릿 불필요)
+ * ============================================================ */
+function getAccessPassword() {
+  const cfg = loadConfig();
+  return (cfg.auth && cfg.auth.password) || process.env.ACCESS_PASSWORD || "";
+}
+function authRequired() { return !!getAccessPassword(); }
+
+function b64url(buf) {
+  return Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function makeToken(ttlMs) {
+  const pw = getAccessPassword();
+  const payload = b64url(JSON.stringify({ exp: Date.now() + (ttlMs || 12 * 60 * 60 * 1000) }));
+  const sig = b64url(crypto.createHmac("sha256", pw).update(payload).digest());
+  return payload + "." + sig;
+}
+function verifyToken(token) {
+  const pw = getAccessPassword();
+  if (!pw || !token || typeof token !== "string") return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const expected = b64url(crypto.createHmac("sha256", pw).update(parts[0]).digest());
+  const a = Buffer.from(parts[1]); const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[0].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
+    if (!payload.exp || Date.now() > payload.exp) return false;
+  } catch (e) { return false; }
+  return true;
+}
+/* 비밀번호 일치 확인 (타이밍 안전) */
+function checkPassword(input) {
+  const pw = getAccessPassword();
+  if (!pw) return false;
+  const h = (s) => crypto.createHash("sha256").update(String(s || "")).digest();
+  try { return crypto.timingSafeEqual(h(input), h(pw)); } catch (e) { return false; }
+}
+/* 요청에서 Bearer 토큰 추출 후 검증 (인증 비활성 시 항상 통과) */
+function isAuthorized(req) {
+  if (!authRequired()) return true;
+  const h = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
+  const token = h.replace(/^Bearer\s+/i, "");
+  return verifyToken(token);
+}
+
+/* ---------- 헬스(키/인증 설정 여부) ---------- */
 function healthStatus() {
   const cfg = loadConfig();
   return {
     ok: true,
+    authRequired: authRequired(),
     keys: {
       openai: !!llmKey("openai", cfg.llm.openai),
       google: !!llmKey("google", cfg.llm.google),
@@ -177,4 +230,7 @@ async function readJsonBody(req) {
   });
 }
 
-module.exports = { loadConfig, callLLM, callImage, healthStatus, readJsonBody, TIMEOUT_MS };
+module.exports = {
+  loadConfig, callLLM, callImage, healthStatus, readJsonBody, TIMEOUT_MS,
+  authRequired, makeToken, verifyToken, checkPassword, isAuthorized,
+};

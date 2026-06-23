@@ -1,5 +1,6 @@
 {
-  "_README": "이 파일을 config.json으로 복사한 뒤 apiKey 값을 채우세요. model/baseUrl은 필요 시 실제 사용 모델 ID로 변경하세요. apiKey를 비워두면 동일 이름의 환경변수(OPENAI_API_KEY / GOOGLE_API_KEY)를 사용합니다. 이미지 모델 키를 비우면 동일 벤더의 LLM 키를 재사용합니다.",
+  "_README": "이 파일을 config.json으로 복사한 뒤 apiKey 값을 채우세요. model/baseUrl은 필요 시 실제 사용 모델 ID로 변경하세요. apiKey를 비워두면 동일 이름의 환경변수(OPENAI_API_KEY / GOOGLE_API_KEY)를 사용합니다. 이미지 모델 키를 비우면 동일 벤더의 LLM 키를 재사용합니다. auth.password를 채우면(또는 환경변수 ACCESS_PASSWORD) 로그인(공용 비밀번호)이 켜집니다. 비우면 로그인 없이 공개 접근.",
+  "auth": { "password": "" },
   "llm": {
     "openai": { "apiKey": "sk-...", "model": "gpt-5.2", "baseUrl": "https://api.openai.com/v1" },
     "google": { "apiKey": "AIza...", "model": "gemini-2.5-flash", "baseUrl": "https://generativelanguage.googleapis.com/v1beta" }

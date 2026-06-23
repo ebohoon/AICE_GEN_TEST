@@ -52,9 +52,20 @@ node server.js
 2. **환경변수 설정** (Vercel → Project → Settings → Environment Variables):
    - `OPENAI_API_KEY` — OpenAI 키 (텍스트 gpt-5.2 + 이미지 gpt-image-1 공용)
    - `GOOGLE_API_KEY` — Google 키 (Gemini)
+   - `ACCESS_PASSWORD` — (선택) 로그인 비밀번호. 설정하면 로그인 후에만 이용 가능
 3. 환경변수 추가 후 **Redeploy** 해야 반영됨
 
 > `config.json`은 `.gitignore`로 배포에 포함되지 않으므로, Vercel에서는 **반드시 환경변수로 키를 주입**해야 합니다. 함수가 없으면 `/api/*`는 404, 키가 없으면 호출 시 "키가 설정되지 않았습니다" 오류가 납니다.
+
+## 로그인 (접근 제한)
+
+링크만 알면 누구나 접속·API 호출이 가능하므로(=내 API 비용 소모), **공용 비밀번호 1개**로 접근을 제한할 수 있습니다.
+
+- **켜기**: 환경변수 `ACCESS_PASSWORD`에 비밀번호 설정 (로컬은 `config.json`의 `auth.password`)
+- **끄기**: 비워두면 로그인 없이 공개 접근 (현재 기본값)
+- 인증은 **서버(서버리스 함수)에서 강제**됩니다. `/api/login`이 비밀번호 확인 후 HMAC 서명 토큰을 발급하고, `/api/llm`·`/api/image`는 유효한 토큰이 없으면 **401**을 반환 → 화면을 우회해도 API가 보호됩니다.
+- 토큰은 브라우저 `sessionStorage`에 보관되어 새로고침해도 유지(탭을 닫으면 만료, 기본 12시간).
+- 설정/변경 후에는 **Redeploy** 필요.
 
 ## 모델 ID 참고
 

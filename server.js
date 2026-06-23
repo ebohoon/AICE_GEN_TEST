@@ -71,7 +71,17 @@ function serveStatic(pathname, res) {
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, `http://localhost:${PORT}`);
 
+  if (req.method === "POST" && u.pathname === "/api/login") {
+    if (!shared.authRequired()) return sendJSON(res, 200, { ok: true, authDisabled: true, token: null });
+    let body;
+    try { body = JSON.parse((await readBody(req)) || "{}"); }
+    catch (e) { return sendJSON(res, 400, { error: "잘못된 요청 형식." }); }
+    if (shared.checkPassword(body.password)) return sendJSON(res, 200, { ok: true, token: shared.makeToken() });
+    return sendJSON(res, 401, { error: "비밀번호가 올바르지 않습니다." });
+  }
+
   if (req.method === "POST" && (u.pathname === "/api/llm" || u.pathname === "/api/image")) {
+    if (!shared.isAuthorized(req)) return sendJSON(res, 401, { error: "인증이 필요합니다. 다시 로그인하세요." });
     let body;
     try { body = JSON.parse((await readBody(req)) || "{}"); }
     catch (e) { return sendJSON(res, 400, { error: "잘못된 요청 형식(JSON 파싱 실패)." }); }

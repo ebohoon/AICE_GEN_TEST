@@ -203,6 +203,8 @@ let current = "A-Q1";
 let initialized = false;          // 첫 로드 때 빈 답안으로 덮어쓰지 않기 위한 플래그
 const answers = {};               // 문항별 답안 + 우측 플레이그라운드(메모리)
 const playgroundImages = {};      // 문항별 우측 이미지 결과(메모리)
+const AUTH_KEY = "aice_gen_token";
+let authToken = (() => { try { return sessionStorage.getItem(AUTH_KEY) || null; } catch (e) { return null; } })();
 
 /* ---------- DOM ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -225,6 +227,7 @@ const submitBtn    = $("#submitBtn");
 init();
 
 function init() {
+  bindLogin();
   renderSteps();
   bindTabs();
   bindButtons();
@@ -246,6 +249,54 @@ function bindIntro() {
     intro.classList.add("hidden"); // 안내 화면 숨김 → 시험 화면 노출
     startTimer();                  // 시험 시작 시점에 타이머 시작
   });
+}
+
+/* ---------- 로그인 (공용 비밀번호, 서버 인증) ---------- */
+function showLogin() {
+  const s = $("#loginScreen");
+  if (s) { s.hidden = false; const i = $("#loginPassword"); if (i) setTimeout(() => i.focus(), 0); }
+}
+function hideLogin() { const s = $("#loginScreen"); if (s) s.hidden = true; }
+
+async function bindLogin() {
+  const form = $("#loginForm");
+  const pwInput = $("#loginPassword");
+  const errEl = $("#loginError");
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errEl.textContent = "";
+      const btn = form.querySelector("button");
+      btn.disabled = true;
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: pwInput.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          authToken = data.token || null;
+          try { if (authToken) sessionStorage.setItem(AUTH_KEY, authToken); } catch (e) {}
+          hideLogin();
+        } else {
+          errEl.textContent = data.error || "로그인에 실패했습니다.";
+          pwInput.value = ""; pwInput.focus();
+        }
+      } catch (err) {
+        errEl.textContent = "서버에 연결할 수 없습니다.";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  // 이미 토큰이 있으면 통과(만료 시 API 호출에서 재로그인 유도)
+  if (authToken) { hideLogin(); return; }
+  // 토큰 없음 → 인증 필요 여부 확인
+  try {
+    const h = await (await fetch("/api/health")).json();
+    if (!h.authRequired) { hideLogin(); return; } // 인증 비활성(공개) → 통과
+  } catch (e) { /* health 실패 시 로그인 화면 유지 */ }
+  showLogin();
 }
 
 /* ---------- 스텝(문항) 렌더링 ---------- */
@@ -584,16 +635,20 @@ function renderImages(images) {
 async function postJSON(url, body) {
   let res;
   try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const headers = { "Content-Type": "application/json" };
+    if (authToken) headers["Authorization"] = "Bearer " + authToken;
+    res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
   } catch (e) {
     throw new Error("서버에 연결할 수 없습니다. (node server.js 실행 여부 확인)");
   }
   let data = {};
   try { data = await res.json(); } catch (e) {}
+  if (res.status === 401) { // 인증 만료/누락 → 재로그인
+    authToken = null;
+    try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
+    showLogin();
+    throw new Error(data.error || "인증이 필요합니다. 다시 로그인하세요.");
+  }
   if (!res.ok) {
     // 404/405 + 우리 API의 에러 형식이 아니면 → 백엔드(node server.js)가 아닌 정적 서버에 접속한 경우
     if (!data.error && (res.status === 404 || res.status === 405)) {
