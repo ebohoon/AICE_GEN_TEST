@@ -308,6 +308,23 @@ html, body {
 .model-box:disabled legend { color: #9aa7b8; }
 .model-box:disabled .radio { cursor: not-allowed; color: #9aa7b8; }
 
+/* AI 미사용 문항(E-Q1 등): 우측 플레이그라운드 비활성 처리 */
+.right-panel.playground-disabled .model-row,
+.right-panel.playground-disabled .prompt-box,
+.right-panel.playground-disabled .result-box {
+  opacity: .45;
+  filter: grayscale(.4);
+  pointer-events: none;
+  user-select: none;
+}
+.mode-hint.mode-hint-notice {
+  color: #7a5c00;
+  background: #fff8e1;
+  border-color: #ffe082;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
 .prompt-box, .result-box {
   background: #fff;
   border: 1px solid var(--border);
