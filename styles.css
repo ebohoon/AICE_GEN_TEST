@@ -184,6 +184,7 @@ html, body {
   font-size: 13px;
   font-weight: 600;
   color: #b45309;
+  white-space: pre-line; /* 지시문 내 \n을 줄바꿈으로 렌더 */
 }
 
 .question-file { margin-top: -4px; }
