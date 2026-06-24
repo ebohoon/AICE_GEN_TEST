@@ -77,7 +77,7 @@ const server = http.createServer(async (req, res) => {
     try { body = JSON.parse((await readBody(req)) || "{}"); }
     catch (e) { return sendJSON(res, 400, { error: "잘못된 요청 형식." }); }
     if (shared.checkPassword(body.password)) return sendJSON(res, 200, { ok: true, token: shared.makeToken() });
-    return sendJSON(res, 401, { error: "비밀번호가 올바르지 않습니다." });
+    return sendJSON(res, 401, { error: "인증코드가 올바르지 않습니다." });
   }
 
   if (req.method === "POST" && (u.pathname === "/api/llm" || u.pathname === "/api/image")) {

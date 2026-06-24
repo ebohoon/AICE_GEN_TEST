@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     if (checkPassword(body.password)) {
       res.status(200).json({ ok: true, token: makeToken() });
     } else {
-      res.status(401).json({ error: "비밀번호가 올바르지 않습니다." });
+      res.status(401).json({ error: "인증코드가 올바르지 않습니다." });
     }
   } catch (e) {
     res.status(500).json({ error: "로그인 처리 중 오류가 발생했습니다." });
