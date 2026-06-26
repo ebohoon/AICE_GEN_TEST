@@ -1,5 +1,5 @@
 {
   "functions": {
-    "api/image.js": { "maxDuration": 60 }
+    "api/image.js": { "maxDuration": 180 }
   }
 }

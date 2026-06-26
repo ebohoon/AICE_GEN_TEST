@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-const TIMEOUT_MS = 120000; // 외부 API 호출 타임아웃
+const TIMEOUT_MS = 150000; // 외부 API 호출 타임아웃 (Nano Banana 이미지 생성이 ~70초+라 여유 확보)
 
 /* 기본 설정 (config.json이 없는 환경=Vercel에서는 이 값 + 환경변수 사용) */
 function defaultConfig() {
@@ -144,14 +144,20 @@ async function callImage(provider, prompt, cfg) {
     const { ok, status, json, text } = await fetchJSON(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["TEXT", "IMAGE"] } }),
     });
     if (!ok) throw apiError("Nano Banana 이미지 API", status, json, text);
-    const parts = (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) || [];
+    const cand = (json.candidates && json.candidates[0]) || {};
+    const parts = (cand.content && cand.content.parts) || [];
     const images = parts
       .filter((p) => p.inlineData && p.inlineData.data)
       .map((p) => ({ b64: p.inlineData.data, mime: p.inlineData.mimeType || "image/png" }));
-    if (!images.length) throw new Error("이미지 결과가 비어 있습니다.");
+    if (!images.length) {
+      // 이미지가 안 온 이유(안전차단/모델 텍스트 응답 등)를 그대로 노출해 진단 가능하게 함
+      const note = parts.map((p) => p.text).filter(Boolean).join(" ").trim().slice(0, 200);
+      const reason = cand.finishReason || (json.promptFeedback && json.promptFeedback.blockReason) || "";
+      throw new Error(`이미지가 생성되지 않았습니다.${reason ? ` (사유: ${reason})` : ""}${note ? ` 모델 응답: ${note}` : ""}`);
+    }
     return { provider, model: gmodel, images };
   }
 
