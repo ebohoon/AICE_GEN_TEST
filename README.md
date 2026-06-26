@@ -19,7 +19,7 @@
 ```json
 {
   "llm": {
-    "openai": { "apiKey": "sk-...", "model": "gpt-5.2", "baseUrl": "https://api.openai.com/v1" },
+    "openai": { "apiKey": "sk-...", "model": "gpt-5.4-mini", "baseUrl": "https://api.openai.com/v1" },
     "google": { "apiKey": "AIza...", "model": "gemini-2.5-flash" },
     "xai":    { "apiKey": "xai-...", "model": "grok-4-1-fast" }
   }
@@ -50,7 +50,7 @@ node server.js
 
 1. GitHub 저장소를 Vercel에 연결 → 푸시 시 자동 배포
 2. **환경변수 설정** (Vercel → Project → Settings → Environment Variables):
-   - `OPENAI_API_KEY` — OpenAI 키 (텍스트 gpt-5.2 + 이미지 gpt-image-1 공용)
+   - `OPENAI_API_KEY` — OpenAI 키 (텍스트 gpt-5.4-mini + 이미지 gpt-image-1 공용)
    - `GOOGLE_API_KEY` — Google 키 (Gemini)
    - `ACCESS_PASSWORD` — (선택) 로그인 비밀번호. 설정하면 로그인 후에만 이용 가능
 3. 환경변수 추가 후 **Redeploy** 해야 반영됨
@@ -73,9 +73,10 @@ node server.js
 
 | 화면 표시 | 기본 모델 ID | 제공자 / 엔드포인트 |
 |-----------|--------------|---------------------|
-| Open AI (gpt-5.2) | `gpt-5.2` | OpenAI Chat Completions |
+| Open AI (gpt-5.4-mini) | `gpt-5.4-mini` | OpenAI Chat Completions |
 | Google (gemini-2.5) | `gemini-2.5-flash` | Google Generative Language |
 | OpenAI (gpt-image-1) | `gpt-image-1` | OpenAI Images (이미지) |
+| Google (Nano Banana) | `gemini-2.5-flash-image` | Google Generative Language (이미지) |
 
 ## API 엔드포인트
 

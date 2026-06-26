@@ -13,11 +13,12 @@ const TIMEOUT_MS = 120000; // 외부 API 호출 타임아웃
 function defaultConfig() {
   return {
     llm: {
-      openai: { apiKey: "", model: "gpt-5.2", baseUrl: "https://api.openai.com/v1" },
+      openai: { apiKey: "", model: "gpt-5.4-mini", baseUrl: "https://api.openai.com/v1" },
       google: { apiKey: "", model: "gemini-2.5-flash", baseUrl: "https://generativelanguage.googleapis.com/v1beta" },
     },
     image: {
       dalle3: { apiKey: "", model: "gpt-image-1", baseUrl: "https://api.openai.com/v1", size: "1024x1024" },
+      nanobanana: { apiKey: "", model: "gemini-2.5-flash-image", baseUrl: "https://generativelanguage.googleapis.com/v1beta" },
     },
   };
 }
@@ -51,8 +52,9 @@ function llmKey(provider, c) {
 }
 function imageKey(provider, c, cfg) {
   if (c && c.apiKey) return c.apiKey;
-  // 이미지 키 미설정 시: OpenAI LLM 키(config) 또는 환경변수(OPENAI_API_KEY) 재사용
+  // 이미지 키 미설정 시: 동일 벤더 LLM 키(config) 또는 환경변수 재사용
   if (provider === "dalle3") return (cfg && cfg.llm && cfg.llm.openai && cfg.llm.openai.apiKey) || process.env.OPENAI_API_KEY || "";
+  if (provider === "nanobanana") return (cfg && cfg.llm && cfg.llm.google && cfg.llm.google.apiKey) || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "";
   return "";
 }
 
@@ -133,6 +135,25 @@ async function callImage(provider, prompt, cfg) {
   const c = (cfg.image && cfg.image[provider]) || {};
   const key = imageKey(provider, c, cfg);
   if (!key) throw new Error(`${provider} 이미지 API 키가 설정되지 않았습니다. (Vercel 환경변수 또는 config.json 확인)`);
+
+  // Google Nano Banana (gemini-2.5-flash-image) — Gemini generateContent로 이미지 생성
+  if (provider === "nanobanana") {
+    const gbase = c.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
+    const gmodel = c.model || "gemini-2.5-flash-image";
+    const url = `${gbase}/models/${gmodel}:generateContent`;
+    const { ok, status, json, text } = await fetchJSON(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
+    });
+    if (!ok) throw apiError("Nano Banana 이미지 API", status, json, text);
+    const parts = (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) || [];
+    const images = parts
+      .filter((p) => p.inlineData && p.inlineData.data)
+      .map((p) => ({ b64: p.inlineData.data, mime: p.inlineData.mimeType || "image/png" }));
+    if (!images.length) throw new Error("이미지 결과가 비어 있습니다.");
+    return { provider, model: gmodel, images };
+  }
 
   const base = c.baseUrl || "https://api.openai.com/v1";
   const model = c.model || "gpt-image-1";
