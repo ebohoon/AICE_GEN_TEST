@@ -73,7 +73,7 @@ node server.js
 
 | 화면 표시 | 기본 모델 ID | 제공자 / 엔드포인트 |
 |-----------|--------------|---------------------|
-| Open AI (gpt-5.4-mini) | `gpt-5.4-mini` | OpenAI Chat Completions |
+| Open AI (gpt-5.4) | `gpt-5.4-mini` | OpenAI Chat Completions |
 | Google (gemini-2.5) | `gemini-2.5-flash` | Google Generative Language |
 | OpenAI (gpt-image-1) | `gpt-image-1` | OpenAI Images (이미지) |
 | Google (Nano Banana) | `gemini-2.5-flash-image` | Google Generative Language (이미지) |

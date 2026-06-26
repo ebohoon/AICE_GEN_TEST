@@ -741,8 +741,7 @@ async function generateText(prompt) {
 
 async function generateImage(model, prompt) {
   aiImages.style.display = "";
-  const slowNote = model === "nanobanana" ? " (Nano Banana는 최대 1~2분 소요될 수 있어요)" : "";
-  aiImages.innerHTML = `<div class="img-status">「${IMG_LABEL[model] || model}」 이미지를 생성하는 중입니다...${slowNote}</div>`;
+  aiImages.innerHTML = `<div class="img-status">「${IMG_LABEL[model] || model}」 이미지를 생성하는 중입니다...</div>`;
 
   const data = await postJSON("/api/image", { provider: model, prompt });
   renderImages(data.images || []);
