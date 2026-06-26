@@ -265,7 +265,7 @@ function renderQuestionBody(text) {
 const QUESTION_ORDER = CATEGORIES.flatMap((c) => c.questions);
 
 /* 이미지 모델 표시 이름 */
-const IMG_LABEL = { dalle3: "OpenAI (gpt-image-1)", nanobanana: "Google (Nano Banana)" };
+const IMG_LABEL = { dalle3: "OpenAI (DALL·E)", nanobanana: "Google (Nano Banana)" };
 
 /* 이미지 생성 모델만 사용하는 문항 (B-Q1은 dualModel로 LLM+이미지 둘 다 사용 → 제외) */
 const IMAGE_QUESTIONS = new Set();
