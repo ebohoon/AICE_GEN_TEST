@@ -789,6 +789,9 @@ function bindIntro() {
   startBtn.addEventListener("click", () => {
     if (chk && !chk.checked) return;
     intro.classList.add("hidden"); // 안내 화면 숨김 → 시험 화면 노출
+    window.scrollTo(0, 0);         // 시험 화면을 항상 맨 위에서부터 표시
+    const qbox = document.querySelector(".question-box");
+    if (qbox) qbox.scrollTop = 0;
     startTimer();                  // 시험 시작 시점에 타이머 시작
   });
 }
