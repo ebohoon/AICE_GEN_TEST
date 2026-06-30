@@ -29,12 +29,23 @@
     </div>
   </div>
 
+  <!-- ===================== 회차 선택 화면 ===================== -->
+  <div class="round-screen" id="roundScreen" hidden>
+    <div class="round-card">
+      <img class="login-logo" src="favicon.png" alt="AICE GENERATIVE" />
+      <div class="login-brand"><span class="brand">AICE</span> <span class="brand-sub">GENERATIVE 모의고사</span></div>
+      <p class="login-sub">응시할 회차를 선택하세요.</p>
+      <div class="round-list" id="roundList"><!-- JS로 렌더링 --></div>
+    </div>
+  </div>
+
   <!-- ===================== 시험 안내 화면 ===================== -->
-  <div class="intro-screen" id="introScreen">
+  <div class="intro-screen hidden" id="introScreen">
+    <button class="intro-back" id="introBackBtn" type="button">← 회차 다시 선택</button>
     <div class="intro-card">
       <div class="intro-header">
         <div class="intro-header-text">
-          <div class="brand-line"><span class="brand">AICE</span> <span class="brand-sub">GENERATIVE 모의고사</span></div>
+          <div class="brand-line"><span class="brand">AICE</span> <span class="brand-sub">GENERATIVE 모의고사</span> <span class="round-badge" id="introRoundBadge"></span></div>
           <h1>시험 안내</h1>
         </div>
         <img class="intro-logo" src="logo.jpg" alt="(주) 와이즈 교육" onerror="this.style.display='none'" />
@@ -90,6 +101,7 @@
       <div class="topbar-left">
         <span class="brand">AICE</span>
         <span class="brand-sub">GENERATIVE 모의고사</span>
+        <span class="round-badge" id="roundBadge"></span>
       </div>
       <div class="topbar-right">
         <div class="time-left">

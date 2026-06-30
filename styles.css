@@ -485,6 +485,93 @@ html, body {
 .login-btn { background: var(--blue); padding: 12px; font-size: 15px; font-weight: 700; }
 .login-error { min-height: 18px; margin-top: 11px; font-size: 13px; color: var(--red); font-weight: 600; }
 
+/* ===================== 회차 선택 화면 ===================== */
+.round-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: linear-gradient(180deg, #eef3fb 0%, #f4f6fa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.round-screen[hidden] { display: none; }
+.round-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 16px 50px rgba(20, 50, 100, .14);
+  padding: 34px 30px 30px;
+  text-align: center;
+}
+.round-list { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.round-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.round-item:hover:not(.disabled) {
+  border-color: var(--blue);
+  background: #f6faff;
+  box-shadow: 0 4px 14px rgba(28, 110, 224, .12);
+}
+.round-item.disabled { cursor: not-allowed; opacity: .6; background: #f6f7f9; }
+.round-item-label { letter-spacing: .3px; }
+.round-item-status {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.round-item-status.ready { color: #0a7d32; background: #e3f6e8; }
+.round-item-status.soon  { color: #8a6d00; background: #fdf3d6; }
+
+/* 회차 표시 배지 (상단 바 · 안내 화면) */
+.round-badge {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--blue);
+  background: var(--blue-light);
+  border: 1px solid #cfe6fb;
+  border-radius: 999px;
+  padding: 2px 10px;
+  vertical-align: middle;
+}
+.round-badge:empty { display: none; }
+.intro-back {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--blue);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(20, 50, 100, .1);
+}
+.intro-back:hover { background: #f6faff; border-color: var(--blue); }
+
 /* ===================== 시험 안내 화면 ===================== */
 .intro-screen {
   position: fixed;
