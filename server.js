@@ -16,6 +16,18 @@ const fs = require("fs");
 const path = require("path");
 const shared = require("./api/_shared");
 
+/* 로컬 개발용 .env 로더 (의존성 없이) — Vercel은 환경변수를 자동 주입 */
+(function loadEnv() {
+  try {
+    const p = path.join(__dirname, ".env");
+    if (!fs.existsSync(p)) return;
+    for (const line of fs.readFileSync(p, "utf8").split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  } catch (e) {}
+})();
+
 const ROOT = __dirname;
 const PORT = process.env.PORT || 5500;
 
@@ -68,8 +80,41 @@ function serveStatic(pathname, res) {
   });
 }
 
+/* /api/v1/exam-sessions 라우팅 (로컬) — 로직은 api/_exam.js 로 Vercel 함수와 공유 */
+async function handleV1(req, res, u) {
+  const exam = require("./api/_exam");
+  if (!exam.checkPartner(req.headers)) return sendJSON(res, 401, { error: { code: "unauthorized", message: "API 키가 유효하지 않습니다." } });
+  const parts = u.pathname.split("/").filter(Boolean); // ["api","v1","exam-sessions", id?, sub?]
+  const id = parts[3];
+  const sub = parts[4];
+  try {
+    if (!id && req.method === "POST") {
+      let body;
+      try { body = JSON.parse((await readBody(req)) || "{}"); }
+      catch (e) { return sendJSON(res, 400, { error: { code: "invalid_request", message: "JSON 파싱 실패." } }); }
+      const r = await exam.handleCreateSession(body);
+      return sendJSON(res, r.status, r.json);
+    }
+    if (id && sub === "launch-token" && req.method === "POST") {
+      const r = await exam.handleLaunchToken(id, exam.baseUrlFrom(req));
+      return sendJSON(res, r.status, r.json);
+    }
+    if (id && !sub && req.method === "GET") {
+      const r = await exam.handleGetResult(id);
+      return sendJSON(res, r.status, r.json);
+    }
+    return sendJSON(res, 405, { error: { code: "method_not_allowed", message: "허용되지 않은 메서드/경로입니다." } });
+  } catch (e) {
+    return sendJSON(res, 500, { error: { code: "server_error", message: e.message || String(e) } });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (u.pathname.startsWith("/api/v1/exam-sessions")) {
+    return handleV1(req, res, u);
+  }
 
   if (req.method === "POST" && u.pathname === "/api/login") {
     if (!shared.authRequired()) return sendJSON(res, 200, { ok: true, authDisabled: true, token: null });
