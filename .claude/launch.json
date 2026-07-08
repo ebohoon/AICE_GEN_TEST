@@ -7,6 +7,12 @@
       "runtimeArgs": ["server.js"],
       "port": 5500,
       "autoPort": true
+    },
+    {
+      "name": "date-sunwoo",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5599", "--directory", "date-sunwoo"],
+      "port": 5599
     }
   ]
 }

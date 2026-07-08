@@ -1,0 +1,13 @@
+{
+  "name": "aice-gen-mock-exam",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AICE GENERATIVE 모의고사 + aicoach.kr 연동 API",
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node db/migrate.js"
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0"
+  }
+}

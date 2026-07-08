@@ -4,9 +4,17 @@ config.json
 # Claude Code 로컬 전용 설정
 .claude/settings.local.json
 
-# 의존성/빌드 (현재는 사용 안 함)
+# 의존성/빌드
 node_modules/
+
+# 환경변수 (실제 키·DB 접속정보)
+.env
+.env.local
+.env*.local
 
 # OS
 .DS_Store
 Thumbs.db
+
+# 개인 사이드 프로젝트(별도 Vercel 프로젝트로 배포) — 이 저장소에는 포함하지 않음
+date-sunwoo/
