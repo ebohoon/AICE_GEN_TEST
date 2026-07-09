@@ -14,9 +14,18 @@ function newSessionId() {
   return "sess_" + crypto.randomBytes(9).toString("hex");
 }
 
-/* 호출마다 클라이언트 연결/해제 (POSTGRES_URL = direct 연결) */
+/* direct(비풀링) 연결 문자열 선택 — 환경마다 변수명이 다를 수 있어 폴백 */
+function connString() {
+  return process.env.POSTGRES_URL_NON_POOLING
+    || process.env.POSTGRES_URL
+    || process.env.DATABASE_URL_UNPOOLED
+    || process.env.DATABASE_URL
+    || "";
+}
+
+/* 호출마다 클라이언트 연결/해제 (direct 연결 문자열을 명시적으로 전달) */
 async function withClient(run) {
-  const client = createClient(); // 기본으로 process.env.POSTGRES_URL 사용
+  const client = createClient({ connectionString: connString() });
   await client.connect();
   try {
     return await run(client);
