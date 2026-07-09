@@ -1,12 +1,11 @@
 /* ============================================================
- *  DB 접근 계층 (Postgres · Vercel Postgres/Neon)
+ *  DB 접근 계층 (Postgres · 표준 pg 드라이버 · 일반 TCP)
  *  - 연동 API(세션 생성/진입/제출/결과/웹훅)에서 공용 사용
- *  - 접속 문자열은 환경변수 POSTGRES_URL (Vercel Postgres 자동 주입)
- *  - createClient() 사용: direct(비풀링) 연결 문자열과 호환
- *    (sql/createPool 은 pooled 문자열을 요구해 direct URL에서 오류)
+ *  - 접속 문자열: POSTGRES_URL (Vercel Postgres/Neon 자동 주입) 등
+ *  - 호출마다 Client 연결/해제 (저볼륨 서버리스에 충분)
  * ============================================================ */
 const crypto = require("crypto");
-const { createClient } = require("@vercel/postgres");
+const { Client } = require("pg");
 
 const VALID_STATUS = ["created", "started", "submitted", "expired"];
 
@@ -14,18 +13,20 @@ function newSessionId() {
   return "sess_" + crypto.randomBytes(9).toString("hex");
 }
 
-/* direct(비풀링) 연결 문자열 선택 — 환경마다 변수명이 다를 수 있어 폴백 */
+/* 접속 문자열 선택 (환경마다 변수명이 다를 수 있어 폴백) */
 function connString() {
-  return process.env.POSTGRES_URL_NON_POOLING
-    || process.env.POSTGRES_URL
-    || process.env.DATABASE_URL_UNPOOLED
+  return process.env.POSTGRES_URL
+    || process.env.POSTGRES_URL_NON_POOLING
     || process.env.DATABASE_URL
+    || process.env.DATABASE_URL_UNPOOLED
     || "";
 }
 
-/* 호출마다 클라이언트 연결/해제 (direct 연결 문자열을 명시적으로 전달) */
+/* 호출마다 Client 연결/해제. Neon 등은 SSL 필수(로컬은 예외) */
 async function withClient(run) {
-  const client = createClient({ connectionString: connString() });
+  const cs = connString();
+  const isLocal = /localhost|127\.0\.0\.1/.test(cs);
+  const client = new Client({ connectionString: cs, ssl: isLocal ? false : { rejectUnauthorized: false } });
   await client.connect();
   try {
     return await run(client);
@@ -59,14 +60,14 @@ function toSession(row) {
 async function createSession(d) {
   const id = newSessionId();
   return withClient(async (c) => {
-    await c.sql`
-      insert into exam_session
-        (session_id, set_no, user_id, course_id, lesson_id, external_ref, callback_url, return_url, expires_at)
-      values
-        (${id}, ${d.set || 1}, ${d.user_id}, ${d.course_id || null}, ${d.lesson_id || null},
-         ${d.external_ref || null}, ${d.callback_url || null}, ${d.return_url || null}, ${d.expires_at || null})
-    `;
-    const { rows } = await c.sql`select * from exam_session where session_id = ${id}`;
+    await c.query(
+      `insert into exam_session
+         (session_id, set_no, user_id, course_id, lesson_id, external_ref, callback_url, return_url, expires_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [id, d.set || 1, d.user_id, d.course_id || null, d.lesson_id || null,
+       d.external_ref || null, d.callback_url || null, d.return_url || null, d.expires_at || null]
+    );
+    const { rows } = await c.query(`select * from exam_session where session_id = $1`, [id]);
     return toSession(rows[0]);
   });
 }
@@ -74,7 +75,7 @@ async function createSession(d) {
 /* 세션 조회 (API ③ 결과 조회 / 내부용) */
 async function getSession(id) {
   return withClient(async (c) => {
-    const { rows } = await c.sql`select * from exam_session where session_id = ${id}`;
+    const { rows } = await c.query(`select * from exam_session where session_id = $1`, [id]);
     return toSession(rows[0]);
   });
 }
@@ -82,15 +83,14 @@ async function getSession(id) {
 /* 일회용 진입 토큰 소모 — 미사용 & 만료 전이면 성공(정상 진입), 아니면 null */
 async function consumeLaunch(id) {
   return withClient(async (c) => {
-    const { rows } = await c.sql`
-      update exam_session
-         set launch_used_at = now()
-       where session_id = ${id}
-         and launch_used_at is null
-         and status = 'created'
-         and (expires_at is null or expires_at > now())
-      returning *
-    `;
+    const { rows } = await c.query(
+      `update exam_session
+          set launch_used_at = now()
+        where session_id = $1
+          and launch_used_at is null
+          and status = 'created'
+          and (expires_at is null or expires_at > now())
+      returning *`, [id]);
     return toSession(rows[0]);
   });
 }
@@ -98,12 +98,11 @@ async function consumeLaunch(id) {
 /* 응시 시작 처리 (exam.started 시점) */
 async function markStarted(id) {
   return withClient(async (c) => {
-    const { rows } = await c.sql`
-      update exam_session
-         set status = 'started', started_at = coalesce(started_at, now())
-       where session_id = ${id} and status in ('created')
-      returning *
-    `;
+    const { rows } = await c.query(
+      `update exam_session
+          set status = 'started', started_at = coalesce(started_at, now())
+        where session_id = $1 and status in ('created')
+      returning *`, [id]);
     return toSession(rows[0]);
   });
 }
@@ -111,12 +110,11 @@ async function markStarted(id) {
 /* 제출 저장 (answers = 응시자 답안 원문, 채점 없음) */
 async function saveSubmission(id, answers) {
   return withClient(async (c) => {
-    const { rows } = await c.sql`
-      update exam_session
-         set status = 'submitted', submitted_at = now(), answers = ${JSON.stringify(answers)}::jsonb
-       where session_id = ${id} and status <> 'submitted'
-      returning *
-    `;
+    const { rows } = await c.query(
+      `update exam_session
+          set status = 'submitted', submitted_at = now(), answers = $2::jsonb
+        where session_id = $1 and status <> 'submitted'
+      returning *`, [id, JSON.stringify(answers)]);
     return toSession(rows[0]);
   });
 }
@@ -124,22 +122,19 @@ async function saveSubmission(id, answers) {
 /* 만료 처리(선택: 크론에서 미사용 세션 정리) */
 async function expireStale() {
   return withClient(async (c) => {
-    const { rowCount } = await c.sql`
-      update exam_session set status = 'expired'
-       where status = 'created' and expires_at is not null and expires_at < now()
-    `;
-    return rowCount;
+    const r = await c.query(
+      `update exam_session set status = 'expired'
+        where status = 'created' and expires_at is not null and expires_at < now()`);
+    return r.rowCount;
   });
 }
 
 /* ---------- 웹훅 발송 큐 (Phase 5에서 사용) ---------- */
 async function queueWebhook(sessionId, event) {
   return withClient(async (c) => {
-    await c.sql`
-      insert into webhook_delivery (session_id, event)
-      values (${sessionId}, ${event})
-      on conflict (session_id, event) do nothing
-    `;
+    await c.query(
+      `insert into webhook_delivery (session_id, event) values ($1,$2)
+       on conflict (session_id, event) do nothing`, [sessionId, event]);
   });
 }
 

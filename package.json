@@ -8,6 +8,6 @@
     "migrate": "node db/migrate.js"
   },
   "dependencies": {
-    "@vercel/postgres": "^0.10.0"
+    "pg": "^8.13.1"
   }
 }

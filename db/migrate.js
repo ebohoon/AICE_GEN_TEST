@@ -1,32 +1,26 @@
 /* ============================================================
- *  스키마 마이그레이션 실행기
- *  - db/schema.sql 을 순서대로 실행
+ *  스키마 마이그레이션 실행기 (pg)
+ *  - db/schema.sql 전체를 한 번에 실행 (simple 프로토콜 = 다중 문장 허용)
  *  - 실행: POSTGRES_URL 설정 후  `npm run migrate`
- *    (로컬은 `vercel env pull .env` 로 POSTGRES_URL 내려받거나 직접 지정)
- *  - 간단하게는 Vercel 대시보드 DB Query 창에 schema.sql 붙여넣기로 대체 가능
+ *  - 대안: Vercel 대시보드 DB Query 창에 schema.sql 문장을 하나씩 실행
  * ============================================================ */
 const fs = require("fs");
 const path = require("path");
-const { sql } = require("@vercel/postgres");
+const { Client } = require("pg");
 
 (async () => {
-  if (!process.env.POSTGRES_URL) {
-    console.error("POSTGRES_URL 이 설정되지 않았습니다. (Vercel Postgres 연결 후 재시도)");
+  const cs = process.env.POSTGRES_URL || process.env.DATABASE_URL || "";
+  if (!cs) {
+    console.error("POSTGRES_URL(또는 DATABASE_URL) 이 설정되지 않았습니다.");
     process.exit(1);
   }
+  const isLocal = /localhost|127\.0\.0\.1/.test(cs);
+  const client = new Client({ connectionString: cs, ssl: isLocal ? false : { rejectUnauthorized: false } });
+  await client.connect();
   const ddl = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
-  // 주석 제거 후 세미콜론 기준 분리
-  const statements = ddl
-    .replace(/--.*$/gm, "")
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  for (const st of statements) {
-    await sql.query(st);
-    console.log("ok:", st.replace(/\s+/g, " ").slice(0, 60), "…");
-  }
-  console.log(`\n마이그레이션 완료 (${statements.length}개 구문).`);
+  await client.query(ddl); // 다중 문장 한 번에 실행
+  console.log("마이그레이션 완료.");
+  await client.end();
   process.exit(0);
 })().catch((e) => {
   console.error("마이그레이션 실패:", e.message || e);
