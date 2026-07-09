@@ -1,5 +1,8 @@
 {
   "functions": {
     "api/image.js": { "maxDuration": 180 }
-  }
+  },
+  "rewrites": [
+    { "source": "/exam", "destination": "/index.html" }
+  ]
 }

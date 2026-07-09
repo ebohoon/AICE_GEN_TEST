@@ -9,7 +9,7 @@ const db = require("./_db");
 
 /* 현재 제공되는 문제셋(회차). 늘어나면 여기 추가 */
 const AVAILABLE_SETS = [1, 2, 3];
-const LAUNCH_TTL_MS = 15 * 60 * 1000;         // 진입 토큰 15분
+const LAUNCH_TTL_MS = 2 * 60 * 60 * 1000;     // 진입 토큰 2시간(응시 시간 커버)
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;   // 세션(미진입) 24시간
 
 const partnerKey = () => process.env.PARTNER_API_KEY || "";
@@ -119,8 +119,92 @@ async function handleGetResult(sessionId) {
   };
 }
 
+/* ---------- 결과 웹훅 발송 (우리 → aicoach) ---------- */
+const webhookSecret = () => process.env.WEBHOOK_SECRET || "";
+function signWebhook(raw) {
+  return "sha256=" + crypto.createHmac("sha256", webhookSecret()).update(raw).digest("hex");
+}
+async function sendWebhook(session, event, baseUrl) {
+  const url = session.callback_url || process.env.DEFAULT_CALLBACK_URL || "";
+  if (!url) return { skipped: true };
+  const body = {
+    event,
+    session_id: session.session_id,
+    user_id: session.user_id,
+    set: session.set,
+    course_id: session.course_id,
+    lesson_id: session.lesson_id,
+    external_ref: session.external_ref,
+  };
+  if (event === "exam.started") body.started_at = session.started_at;
+  if (event === "exam.submitted") {
+    body.submitted_at = session.submitted_at;
+    body.result_url = `${baseUrl || ""}/api/v1/exam-sessions/${session.session_id}`;
+  }
+  const raw = JSON.stringify(body);
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Signature": signWebhook(raw),
+        "X-Timestamp": String(Math.floor(Date.now() / 1000)),
+      },
+      body: raw, signal: controller.signal,
+    });
+    return { ok: r.ok, status: r.status };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  } finally { clearTimeout(t); }
+}
+
+/* ---------- 시험 화면 ↔ 서버 (Launch Token 인증) ---------- */
+
+/* 진입: 토큰 검증 → 어떤 문제셋을 로드할지 반환(상태 변경 없음) */
+async function handleEnter(token) {
+  const p = verifyLaunchToken(token);
+  if (!p) return err(401, "unauthorized", "유효하지 않거나 만료된 토큰입니다.");
+  const s = await db.getSession(p.sid);
+  if (!s) return err(404, "not_found", "세션을 찾을 수 없습니다.");
+  if (s.status === "submitted") return err(409, "already_submitted", "이미 제출된 세션입니다.");
+  return { status: 200, json: { session_id: s.session_id, set: s.set, status: s.status } };
+}
+
+/* 시작: created→started + exam.started 웹훅(최초 1회) */
+async function handleStart(token, baseUrl) {
+  const p = verifyLaunchToken(token);
+  if (!p) return err(401, "unauthorized", "유효하지 않거나 만료된 토큰입니다.");
+  const started = await db.markStarted(p.sid);            // 전환되면 row, 아니면 null
+  const cur = started || (await db.getSession(p.sid));
+  if (!cur) return err(404, "not_found", "세션을 찾을 수 없습니다.");
+  if (started) {                                          // 최초 시작만 웹훅
+    await db.queueWebhook(cur.session_id, "exam.started");
+    await sendWebhook(cur, "exam.started", baseUrl);
+  }
+  return { status: 200, json: { ok: true, set: cur.set, status: cur.status } };
+}
+
+/* 제출: 답안 저장 + exam.submitted 웹훅 (채점 없음, 답안 원문만) */
+async function handleSubmit(token, answers, baseUrl) {
+  const p = verifyLaunchToken(token);
+  if (!p) return err(401, "unauthorized", "유효하지 않거나 만료된 토큰입니다.");
+  if (!Array.isArray(answers)) return err(400, "invalid_request", "answers 배열이 필요합니다.");
+  const s = await db.saveSubmission(p.sid, answers);
+  if (!s) {
+    const cur = await db.getSession(p.sid);
+    if (cur && cur.status === "submitted") return err(409, "already_submitted", "이미 제출된 세션입니다.");
+    return err(404, "not_found", "세션을 찾을 수 없습니다.");
+  }
+  await db.queueWebhook(s.session_id, "exam.submitted");
+  await sendWebhook(s, "exam.submitted", baseUrl);
+  return { status: 200, json: { ok: true } };
+}
+
 module.exports = {
   AVAILABLE_SETS, checkPartner, baseUrlFrom,
-  signLaunchToken, verifyLaunchToken,
+  signLaunchToken, verifyLaunchToken, signWebhook, sendWebhook,
   handleCreateSession, handleLaunchToken, handleGetResult,
+  handleEnter, handleStart, handleSubmit,
 };

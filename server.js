@@ -67,6 +67,7 @@ function readBody(req) {
 function serveStatic(pathname, res) {
   let rel = decodeURIComponent(pathname);
   if (rel === "/") rel = "/index.html";
+  if (rel === "/exam") rel = "/index.html"; // SSO 진입 URL(/exam?token=)도 앱 로드
   const filePath = path.normalize(path.join(ROOT, rel));
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end("Forbidden"); return; }
   // 보안: API 키가 든 설정 파일은 절대 서빙하지 않음
@@ -109,9 +110,32 @@ async function handleV1(req, res, u) {
   }
 }
 
+/* /api/v1/exam/{enter|start|submit} 라우팅 (로컬) — Launch Token 인증 */
+async function handleExamAction(req, res, u) {
+  const exam = require("./api/_exam");
+  const action = u.pathname.split("/").filter(Boolean)[3]; // enter | start | submit
+  if (req.method !== "POST") return sendJSON(res, 405, { error: { code: "method_not_allowed", message: "POST만 허용됩니다." } });
+  let body;
+  try { body = JSON.parse((await readBody(req)) || "{}"); }
+  catch (e) { return sendJSON(res, 400, { error: { code: "invalid_request", message: "JSON 파싱 실패." } }); }
+  try {
+    let r;
+    if (action === "enter") r = await exam.handleEnter(body.token);
+    else if (action === "start") r = await exam.handleStart(body.token, exam.baseUrlFrom(req));
+    else if (action === "submit") r = await exam.handleSubmit(body.token, body.answers, exam.baseUrlFrom(req));
+    else return sendJSON(res, 404, { error: { code: "not_found", message: "알 수 없는 경로." } });
+    return sendJSON(res, r.status, r.json);
+  } catch (e) {
+    return sendJSON(res, 500, { error: { code: "server_error", message: e.message || String(e) } });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, `http://localhost:${PORT}`);
 
+  if (u.pathname.startsWith("/api/v1/exam/")) {
+    return handleExamAction(req, res, u);
+  }
   if (u.pathname.startsWith("/api/v1/exam-sessions")) {
     return handleV1(req, res, u);
   }
