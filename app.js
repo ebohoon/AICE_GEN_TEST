@@ -1408,14 +1408,19 @@ async function postJSON(url, body) {
   let res;
   try {
     const headers = { "Content-Type": "application/json" };
-    if (authToken) headers["Authorization"] = "Bearer " + authToken;
+    // 통합(SSO) 모드는 로그인 토큰 대신 Launch Token으로 인증
+    const bearer = INTEGRATED ? LAUNCH_TOKEN : authToken;
+    if (bearer) headers["Authorization"] = "Bearer " + bearer;
     res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
   } catch (e) {
     throw new Error("서버에 연결할 수 없습니다. (node server.js 실행 여부 확인)");
   }
   let data = {};
   try { data = await res.json(); } catch (e) {}
-  if (res.status === 401) { // 인증 만료/누락 → 재로그인
+  if (res.status === 401) { // 인증 만료/누락
+    if (INTEGRATED) { // 통합 모드: 로그인 화면 금지 — 오류만 표시
+      throw new Error("응시 세션 인증이 만료되었습니다. 창을 닫고 다시 응시해 주세요.");
+    }
     authToken = null;
     try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
     showLogin();

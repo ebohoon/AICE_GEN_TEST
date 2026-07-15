@@ -200,12 +200,12 @@ function makeToken(ttlMs) {
   const sig = b64url(crypto.createHmac("sha256", pw).update(payload).digest());
   return payload + "." + sig;
 }
-function verifyToken(token) {
-  const pw = getAccessPassword();
-  if (!pw || !token || typeof token !== "string") return false;
+/* HMAC 서명 토큰 공통 검증 (payload.exp 만료 포함) */
+function verifySigned(token, key) {
+  if (!key || !token || typeof token !== "string") return false;
   const parts = token.split(".");
   if (parts.length !== 2) return false;
-  const expected = b64url(crypto.createHmac("sha256", pw).update(parts[0]).digest());
+  const expected = b64url(crypto.createHmac("sha256", key).update(parts[0]).digest());
   const a = Buffer.from(parts[1]); const b = Buffer.from(expected);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
   try {
@@ -214,6 +214,7 @@ function verifyToken(token) {
   } catch (e) { return false; }
   return true;
 }
+function verifyToken(token) { return verifySigned(token, getAccessPassword()); }
 /* 비밀번호 일치 확인 (타이밍 안전) */
 function checkPassword(input) {
   const pw = getAccessPassword();
@@ -221,12 +222,16 @@ function checkPassword(input) {
   const h = (s) => crypto.createHash("sha256").update(String(s || "")).digest();
   try { return crypto.timingSafeEqual(h(input), h(pw)); } catch (e) { return false; }
 }
-/* 요청에서 Bearer 토큰 추출 후 검증 (인증 비활성 시 항상 통과) */
+/* 요청에서 Bearer 토큰 추출 후 검증 (인증 비활성 시 항상 통과)
+ * - 표준 모드: 입장코드 로그인 토큰(ACCESS_PASSWORD 서명)
+ * - aicoach 연동(SSO) 모드: Launch Token(LAUNCH_TOKEN_SECRET 서명)도 허용
+ *   → 통합 모드는 로그인 없이 진입하므로 LLM/이미지 API를 진입 토큰으로 인증 */
 function isAuthorized(req) {
   if (!authRequired()) return true;
   const h = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
   const token = h.replace(/^Bearer\s+/i, "");
-  return verifyToken(token);
+  if (verifySigned(token, getAccessPassword())) return true;
+  return verifySigned(token, process.env.LAUNCH_TOKEN_SECRET || "");
 }
 
 /* ---------- 헬스(키/인증 설정 여부) ---------- */
