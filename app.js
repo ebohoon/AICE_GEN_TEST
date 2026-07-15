@@ -743,6 +743,14 @@ const AUTH_KEY = "aice_gen_token";
 let authToken = (() => { try { return sessionStorage.getItem(AUTH_KEY) || null; } catch (e) { return null; } })();
 let submitted = false; // 중복 제출 방지(수동/자동)
 
+/* ---------- aicoach 연동(SSO) 모드 ----------
+ * URL에 ?token= 이 있으면 통합 모드: 로그인·회차선택을 건너뛰고
+ * 토큰이 지정한 문제셋으로 바로 응시, 제출은 서버(submit API)로 저장.
+ * 토큰이 없으면 아래 값은 전부 비활성 → 기존(표준) 동작 그대로. */
+const LAUNCH_TOKEN = (() => { try { return new URLSearchParams(location.search).get("token"); } catch (e) { return null; } })();
+const INTEGRATED = !!LAUNCH_TOKEN;
+let integratedSessionId = null;
+
 /* ---------- DOM ---------- */
 const $ = (sel) => document.querySelector(sel);
 const stepNav      = $("#stepNav");
@@ -764,13 +772,14 @@ const submitBtn    = $("#submitBtn");
 init();
 
 function init() {
-  bindLogin();
   renderSteps();
   bindTabs();
   bindButtons();
   bindModelMode();
   bindIntro();
   loadQuestion(current);
+  if (INTEGRATED) enterIntegrated(); // ?token= → SSO 통합 모드
+  else bindLogin();                  // 토큰 없음 → 기존(표준) 로그인 흐름
 }
 
 /* ---------- 시험 안내 화면 ---------- */
@@ -782,10 +791,13 @@ function bindIntro() {
 
   chk.addEventListener("change", () => { startBtn.disabled = !chk.checked; });
   const backBtn = $("#introBackBtn");
-  if (backBtn) backBtn.addEventListener("click", () => {
-    intro.classList.add("hidden");   // 안내 화면 숨김 → 회차 선택으로 복귀
-    showRoundSelect();
-  });
+  if (backBtn) {
+    if (INTEGRATED) backBtn.style.display = "none"; // 통합 모드엔 회차 재선택 없음
+    else backBtn.addEventListener("click", () => {
+      intro.classList.add("hidden");   // 안내 화면 숨김 → 회차 선택으로 복귀
+      showRoundSelect();
+    });
+  }
   startBtn.addEventListener("click", () => {
     if (chk && !chk.checked) return;
     intro.classList.add("hidden"); // 안내 화면 숨김 → 시험 화면 노출
@@ -793,6 +805,7 @@ function bindIntro() {
     const qbox = document.querySelector(".question-box");
     if (qbox) qbox.scrollTop = 0;
     startTimer();                  // 시험 시작 시점에 타이머 시작
+    if (INTEGRATED) callExamStart(); // exam.started (횟수 카운트용)
   });
 }
 
@@ -895,6 +908,109 @@ function updateRoundLabels() {
   const r = ROUNDS.find((x) => x.id === currentRound);
   const txt = r ? r.label : "";
   ["#roundBadge", "#introRoundBadge"].forEach((sel) => { const el = $(sel); if (el) el.textContent = txt; });
+}
+
+/* ============================================================
+ *  aicoach 연동(SSO) — 통합 모드
+ * ============================================================ */
+/* 진입: 토큰 검증 → 지정 문제셋 로드 → 안내 화면 (로그인·회차선택 없음) */
+async function enterIntegrated() {
+  hideLogin();
+  hideRoundSelect();
+  const intro = $("#introScreen"); if (intro) intro.classList.add("hidden");
+  try {
+    const res = await fetch("/api/v1/exam/enter", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: LAUNCH_TOKEN }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const m = (data && data.error && data.error.message) || "유효하지 않은 접속입니다.";
+      return showLaunchError(res.status === 409 ? "이미 제출된 시험입니다." : m);
+    }
+    integratedSessionId = data.session_id;
+    const setId = data.set || 1;
+    const r = ROUNDS.find((x) => x.id === setId);
+    if (!roundReady(r)) return showLaunchError(`문제셋 ${setId}이(가) 준비되지 않았습니다.`);
+    selectRound(setId); // QUESTIONS 교체 + 문항 로드 + 안내 화면 표시
+  } catch (e) {
+    showLaunchError("서버에 연결할 수 없습니다.");
+  }
+}
+
+/* 응시 시작 알림 (exam.started) — 실패해도 응시엔 영향 없음(베스트에포트) */
+function callExamStart() {
+  fetch("/api/v1/exam/start", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: LAUNCH_TOKEN }),
+  }).catch(() => {});
+}
+
+/* 답안을 결과 스키마(문항별 type/fields)로 구성 */
+function buildAnswersPayload() {
+  return QUESTION_ORDER.map((qid) => {
+    const q = QUESTIONS[qid] || {};
+    const a = answers[qid] || {};
+    const fields = getAnswerFields(qid);
+    const type = fields.some((f) => f.type === "choice") ? "choice"
+               : fields.some((f) => f.type === "image") ? "image" : "prompt";
+    const out = {};
+    fields.forEach((f) => {
+      if (f.type === "image") out[f.key + "_image_url"] = a[f.key] || null;
+      else out[f.key] = a[f.key] || "";
+    });
+    return { qid, no: q.no || "", category: qid.split("-")[0], title: q.title || "", type, fields: out };
+  });
+}
+
+/* 통합 모드 제출: 서버 저장(submit API) → 완료 화면 */
+async function submitIntegrated() {
+  const payload = buildAnswersPayload();
+  try {
+    const res = await fetch("/api/v1/exam/submit", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: LAUNCH_TOKEN, answers: payload }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const okOrDone = res.ok || (data && data.error && data.error.code === "already_submitted");
+    if (!okOrDone) {
+      submitted = false; // 저장 실패 → 재제출 허용
+      alert("제출 저장에 실패했습니다. 다시 시도해 주세요.\n(" + ((data.error && data.error.message) || `HTTP ${res.status}`) + ")");
+      return;
+    }
+    showSubmittedScreen();
+  } catch (e) {
+    submitted = false; // 네트워크 오류 → 재제출 허용
+    alert("제출 중 오류가 발생했습니다. 네트워크를 확인하고 다시 시도해 주세요.");
+  }
+}
+
+/* 전체 화면 안내 오버레이(오류/완료 공용) */
+function fullOverlay(id, html) {
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement("div");
+    el.id = id;
+    el.style.cssText = "position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;" +
+      "background:linear-gradient(180deg,#eef3fb 0%,#f4f6fa 100%);padding:24px;text-align:center;font-family:inherit;";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = html;
+  el.hidden = false;
+}
+function showLaunchError(msg) {
+  hideLogin(); hideRoundSelect();
+  const intro = $("#introScreen"); if (intro) intro.classList.add("hidden");
+  fullOverlay("launchError",
+    `<div style="max-width:420px"><div style="font-size:44px;margin-bottom:12px">⚠️</div>` +
+    `<div style="font-size:18px;font-weight:800;color:#2c4a66;margin-bottom:10px">접속할 수 없습니다</div>` +
+    `<div style="font-size:14px;color:#5a6b7b;line-height:1.7">${escapeHtml(msg)}</div></div>`);
+}
+function showSubmittedScreen() {
+  fullOverlay("submitDone",
+    `<div style="max-width:460px"><div style="font-size:52px;margin-bottom:14px">✅</div>` +
+    `<div style="font-size:20px;font-weight:800;color:#1c3d5a;margin-bottom:10px">제출이 완료되었습니다</div>` +
+    `<div style="font-size:14.5px;color:#5a6b7b;line-height:1.8">답안이 정상적으로 제출되었습니다.<br>결과는 마이페이지에서 확인하실 수 있습니다.<br>이 창은 닫으셔도 됩니다.</div></div>`);
 }
 
 /* ---------- 스텝(문항) 렌더링 ---------- */
@@ -1458,6 +1574,7 @@ function submitExam(auto) {
   if (!auto && !confirm("제출하시겠습니까?")) return; // 수동 제출만 확인창
   submitted = true;
   persist(); // 현재 답안까지 메모리에 반영
+  if (INTEGRATED) return submitIntegrated(); // 연동 모드: 서버 저장(클립보드 X)
   const done = QUESTION_ORDER.filter(isAnswered).length;
   const head = auto
     ? `시험 시간이 종료되어 자동 제출되었습니다. (${done}/${QUESTION_ORDER.length} 작성)`
