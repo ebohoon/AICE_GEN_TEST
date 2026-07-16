@@ -936,6 +936,7 @@ async function enterIntegrated() {
   let out = null;
   try { out = await fetchEnter(); }
   catch (e) { // 네트워크 오류/타임아웃 → 1초 후 1회 자동 재시도(콜드스타트 등 일시 지연 대응)
+    setLaunchStatus("서버 응답이 늦어 다시 시도하고 있습니다…");
     await new Promise((r) => setTimeout(r, 1000));
     try { out = await fetchEnter(); } catch (e2) { out = null; }
   }
@@ -958,11 +959,22 @@ async function enterIntegrated() {
 }
 
 /* 진입 검증 중 로딩 화면 (시험 화면 노출 방지) */
+const APP_BUILD = "20260716a"; // 진단용 빌드 표기(캐시 버전 확인)
 function showLaunchLoading() {
   fullOverlay("launchLoading",
     `<div style="max-width:420px"><div style="font-size:44px;margin-bottom:12px">⏳</div>` +
     `<div style="font-size:18px;font-weight:800;color:#1c3d5a;margin-bottom:10px">응시 정보를 확인하고 있습니다</div>` +
-    `<div style="font-size:14px;color:#5a6b7b;line-height:1.7">잠시만 기다려 주세요…</div></div>`);
+    `<div id="launchStatus" style="font-size:14px;color:#5a6b7b;line-height:1.7">잠시만 기다려 주세요…</div>` +
+    `<div style="margin-top:22px;font-size:11px;color:#b5bfc9">v${APP_BUILD}</div></div>`);
+  // 최후 안전장치: 25초가 지나도 로딩이 닫히지 않으면 강제로 오류 화면 전환(무한 로딩 차단)
+  setTimeout(() => {
+    const el = document.getElementById("launchLoading");
+    if (el && !el.hidden) showLaunchError("서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+  }, 25000);
+}
+function setLaunchStatus(msg) {
+  const el = document.getElementById("launchStatus");
+  if (el) el.textContent = msg;
 }
 function hideLaunchLoading() {
   const el = document.getElementById("launchLoading");
