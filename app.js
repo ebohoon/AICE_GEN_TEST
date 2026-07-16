@@ -750,6 +750,7 @@ let submitted = false; // 중복 제출 방지(수동/자동)
 const LAUNCH_TOKEN = (() => { try { return new URLSearchParams(location.search).get("token"); } catch (e) { return null; } })();
 const INTEGRATED = !!LAUNCH_TOKEN;
 let integratedSessionId = null;
+const APP_BUILD = "20260716b"; // 진단용 빌드 표기 — init()보다 먼저 선언되어야 함(TDZ)
 
 /* ---------- DOM ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -959,7 +960,6 @@ async function enterIntegrated() {
 }
 
 /* 진입 검증 중 로딩 화면 (시험 화면 노출 방지) */
-const APP_BUILD = "20260716a"; // 진단용 빌드 표기(캐시 버전 확인)
 function showLaunchLoading() {
   fullOverlay("launchLoading",
     `<div style="max-width:420px"><div style="font-size:44px;margin-bottom:12px">⏳</div>` +
