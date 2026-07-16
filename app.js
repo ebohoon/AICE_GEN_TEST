@@ -750,7 +750,7 @@ let submitted = false; // 중복 제출 방지(수동/자동)
 const LAUNCH_TOKEN = (() => { try { return new URLSearchParams(location.search).get("token"); } catch (e) { return null; } })();
 const INTEGRATED = !!LAUNCH_TOKEN;
 let integratedSessionId = null;
-const APP_BUILD = "20260716c"; // 진단용 빌드 표기 — init()보다 먼저 선언되어야 함(TDZ)
+const APP_BUILD = "20260716d"; // 진단용 빌드 표기 — init()보다 먼저 선언되어야 함(TDZ)
 
 /* ---------- DOM ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -981,12 +981,18 @@ function hideLaunchLoading() {
   if (el) { el.hidden = true; el.style.display = "none"; } // 인라인 display가 hidden보다 우선
 }
 
-/* 응시 시작 알림 (exam.started) — 실패해도 응시엔 영향 없음(베스트에포트) */
-function callExamStart() {
+/* 응시 시작 알림 (exam.started) — 실패해도 응시엔 영향 없음(베스트에포트)
+ * 단, started_at이 비면 소요시간(duration_used_sec) 계산이 불가하므로 최대 3회 재시도 */
+function callExamStart(attempt) {
+  attempt = attempt || 1;
   fetch("/api/v1/exam/start", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token: LAUNCH_TOKEN }),
-  }).catch(() => {});
+  }).then((res) => {
+    if (!res.ok && res.status >= 500 && attempt < 3) setTimeout(() => callExamStart(attempt + 1), 1500 * attempt);
+  }).catch(() => {
+    if (attempt < 3) setTimeout(() => callExamStart(attempt + 1), 1500 * attempt);
+  });
 }
 
 /* 답안을 결과 스키마(문항별 type/fields)로 구성 */

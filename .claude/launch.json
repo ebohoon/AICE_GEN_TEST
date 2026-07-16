@@ -13,6 +13,16 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5599", "--directory", "date-sunwoo"],
       "port": 5599
+    },
+    {
+      "name": "portfolio",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/d",
+        "/c",
+        "cd /d C:\\Users\\최영부\\Desktop\\AICE GEN 강의자료\\portfolio && npm run dev -- -p 3100"
+      ],
+      "port": 3100
     }
   ]
 }

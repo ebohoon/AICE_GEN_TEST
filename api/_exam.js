@@ -98,6 +98,13 @@ async function handleLaunchToken(sessionId, baseUrl) {
   return { status: 200, json: { session_id: sessionId, launch_url, expires_at: new Date(expMs).toISOString() } };
 }
 
+/* 응시 소요시간(초) — 시작·제출 시각이 모두 있어야 계산, 없으면 null */
+function durationUsedSec(s) {
+  if (!s || !s.started_at || !s.submitted_at) return null;
+  const ms = new Date(s.submitted_at) - new Date(s.started_at);
+  return Number.isFinite(ms) && ms >= 0 ? Math.round(ms / 1000) : null;
+}
+
 /* ---------- API ③ 결과 조회 (= result_url) ---------- */
 async function handleGetResult(sessionId) {
   const s = await db.getSession(sessionId);
@@ -114,6 +121,7 @@ async function handleGetResult(sessionId) {
       status: s.status,
       started_at: s.started_at,
       submitted_at: s.submitted_at,
+      duration_used_sec: durationUsedSec(s),
       answers: s.answers || [],
     },
   };
@@ -139,6 +147,7 @@ async function sendWebhook(session, event, baseUrl) {
   if (event === "exam.started") body.started_at = session.started_at;
   if (event === "exam.submitted") {
     body.submitted_at = session.submitted_at;
+    body.duration_used_sec = durationUsedSec(session);
     body.result_url = `${baseUrl || ""}/api/v1/exam-sessions/${session.session_id}`;
   }
   const raw = JSON.stringify(body);
