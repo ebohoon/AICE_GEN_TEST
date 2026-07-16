@@ -913,22 +913,39 @@ function updateRoundLabels() {
 /* ============================================================
  *  aicoach 연동(SSO) — 통합 모드
  * ============================================================ */
+/* enter 호출 (타임아웃 12초) — 서버 지연 시 무한 로딩 방지 */
+async function fetchEnter() {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch("/api/v1/exam/enter", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: LAUNCH_TOKEN }), signal: controller.signal,
+    });
+    const data = await res.json().catch(() => ({}));
+    return { res, data };
+  } finally { clearTimeout(t); }
+}
+
 /* 진입: 토큰 검증 → 지정 문제셋 로드 → 안내 화면 (로그인·회차선택 없음) */
 async function enterIntegrated() {
   showLaunchLoading(); // 서버 검증 동안 시험 화면이 비치지 않도록 즉시 로딩 화면 표시
   hideLogin();
   hideRoundSelect();
   const intro = $("#introScreen"); if (intro) intro.classList.add("hidden");
+  let out = null;
+  try { out = await fetchEnter(); }
+  catch (e) { // 네트워크 오류/타임아웃 → 1초 후 1회 자동 재시도(콜드스타트 등 일시 지연 대응)
+    await new Promise((r) => setTimeout(r, 1000));
+    try { out = await fetchEnter(); } catch (e2) { out = null; }
+  }
+  if (!out) return showLaunchError("서버 응답이 지연되고 있습니다. 네트워크 확인 후 다시 시도해 주세요.");
+  const { res, data } = out;
+  if (!res.ok) {
+    const m = (data && data.error && data.error.message) || "유효하지 않은 접속입니다.";
+    return showLaunchError(res.status === 409 ? "이미 제출된 시험입니다." : m);
+  }
   try {
-    const res = await fetch("/api/v1/exam/enter", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: LAUNCH_TOKEN }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const m = (data && data.error && data.error.message) || "유효하지 않은 접속입니다.";
-      return showLaunchError(res.status === 409 ? "이미 제출된 시험입니다." : m);
-    }
     integratedSessionId = data.session_id;
     const setId = data.set || 1;
     const r = ROUNDS.find((x) => x.id === setId);
@@ -936,7 +953,7 @@ async function enterIntegrated() {
     selectRound(setId); // QUESTIONS 교체 + 문항 로드 + 안내 화면 표시
     hideLaunchLoading(); // 안내 화면 준비 완료 → 로딩 종료
   } catch (e) {
-    showLaunchError("서버에 연결할 수 없습니다.");
+    showLaunchError("화면을 준비하지 못했습니다. 다시 시도해 주세요.");
   }
 }
 
@@ -1019,7 +1036,9 @@ function showLaunchError(msg) {
   fullOverlay("launchError",
     `<div style="max-width:420px"><div style="font-size:44px;margin-bottom:12px">⚠️</div>` +
     `<div style="font-size:18px;font-weight:800;color:#2c4a66;margin-bottom:10px">접속할 수 없습니다</div>` +
-    `<div style="font-size:14px;color:#5a6b7b;line-height:1.7">${escapeHtml(msg)}</div></div>`);
+    `<div style="font-size:14px;color:#5a6b7b;line-height:1.7">${escapeHtml(msg)}</div>` +
+    `<button type="button" onclick="location.reload()" style="margin-top:18px;padding:11px 26px;border:none;border-radius:8px;` +
+    `background:#1c6ee0;color:#fff;font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer">다시 시도</button></div>`);
 }
 function showSubmittedScreen() {
   fullOverlay("submitDone",
