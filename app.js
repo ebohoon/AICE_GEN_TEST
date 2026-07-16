@@ -915,6 +915,7 @@ function updateRoundLabels() {
  * ============================================================ */
 /* 진입: 토큰 검증 → 지정 문제셋 로드 → 안내 화면 (로그인·회차선택 없음) */
 async function enterIntegrated() {
+  showLaunchLoading(); // 서버 검증 동안 시험 화면이 비치지 않도록 즉시 로딩 화면 표시
   hideLogin();
   hideRoundSelect();
   const intro = $("#introScreen"); if (intro) intro.classList.add("hidden");
@@ -933,9 +934,22 @@ async function enterIntegrated() {
     const r = ROUNDS.find((x) => x.id === setId);
     if (!roundReady(r)) return showLaunchError(`문제셋 ${setId}이(가) 준비되지 않았습니다.`);
     selectRound(setId); // QUESTIONS 교체 + 문항 로드 + 안내 화면 표시
+    hideLaunchLoading(); // 안내 화면 준비 완료 → 로딩 종료
   } catch (e) {
     showLaunchError("서버에 연결할 수 없습니다.");
   }
+}
+
+/* 진입 검증 중 로딩 화면 (시험 화면 노출 방지) */
+function showLaunchLoading() {
+  fullOverlay("launchLoading",
+    `<div style="max-width:420px"><div style="font-size:44px;margin-bottom:12px">⏳</div>` +
+    `<div style="font-size:18px;font-weight:800;color:#1c3d5a;margin-bottom:10px">응시 정보를 확인하고 있습니다</div>` +
+    `<div style="font-size:14px;color:#5a6b7b;line-height:1.7">잠시만 기다려 주세요…</div></div>`);
+}
+function hideLaunchLoading() {
+  const el = document.getElementById("launchLoading");
+  if (el) el.hidden = true;
 }
 
 /* 응시 시작 알림 (exam.started) — 실패해도 응시엔 영향 없음(베스트에포트) */
@@ -999,6 +1013,7 @@ function fullOverlay(id, html) {
   el.hidden = false;
 }
 function showLaunchError(msg) {
+  hideLaunchLoading();
   hideLogin(); hideRoundSelect();
   const intro = $("#introScreen"); if (intro) intro.classList.add("hidden");
   fullOverlay("launchError",
