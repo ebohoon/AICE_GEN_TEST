@@ -750,7 +750,7 @@ let submitted = false; // 중복 제출 방지(수동/자동)
 const LAUNCH_TOKEN = (() => { try { return new URLSearchParams(location.search).get("token"); } catch (e) { return null; } })();
 const INTEGRATED = !!LAUNCH_TOKEN;
 let integratedSessionId = null;
-const APP_BUILD = "20260716b"; // 진단용 빌드 표기 — init()보다 먼저 선언되어야 함(TDZ)
+const APP_BUILD = "20260716c"; // 진단용 빌드 표기 — init()보다 먼저 선언되어야 함(TDZ)
 
 /* ---------- DOM ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -978,7 +978,7 @@ function setLaunchStatus(msg) {
 }
 function hideLaunchLoading() {
   const el = document.getElementById("launchLoading");
-  if (el) el.hidden = true;
+  if (el) { el.hidden = true; el.style.display = "none"; } // 인라인 display가 hidden보다 우선
 }
 
 /* 응시 시작 알림 (exam.started) — 실패해도 응시엔 영향 없음(베스트에포트) */
@@ -1028,7 +1028,8 @@ async function submitIntegrated() {
   }
 }
 
-/* 전체 화면 안내 오버레이(오류/완료 공용) */
+/* 전체 화면 안내 오버레이(오류/완료 공용)
+ * 주의: 인라인 display가 hidden 속성보다 우선하므로 표시/숨김 모두 style.display로 제어 */
 function fullOverlay(id, html) {
   let el = document.getElementById(id);
   if (!el) {
@@ -1040,6 +1041,7 @@ function fullOverlay(id, html) {
   }
   el.innerHTML = html;
   el.hidden = false;
+  el.style.display = "flex";
 }
 function showLaunchError(msg) {
   hideLaunchLoading();
